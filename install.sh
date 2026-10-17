@@ -1,12 +1,14 @@
 
 #!/usr/bin/env bash
 
-# ═══════════════════════════════════════════
-#          PRITAM VPS MANAGEMENT MENU
-#               Made by Pritam
-# ═══════════════════════════════════════════
+# ═══════════════════════════════════════════════════
+#             PRITAM VPS MANAGEMENT TOOLKIT
+#                    Made by Pritam
+# ═══════════════════════════════════════════════════
 
 set -o pipefail
+
+BASE="https://raw.githubusercontent.com/PritamYt403/pterodactyl/main"
 
 PURPLE='\033[1;35m'
 GREEN='\033[1;32m'
@@ -16,8 +18,6 @@ YELLOW='\033[1;33m'
 WHITE='\033[1;37m'
 GRAY='\033[0;37m'
 RESET='\033[0m'
-
-BASE="https://raw.githubusercontent.com/PritamYt403/pterodactyl/main"
 
 pause() {
     echo
@@ -39,80 +39,83 @@ header() {
     echo -e "${PURPLE}"
     cat <<'EOF'
   ██████╗ ██████╗ ██╗████████╗ █████╗ ███╗   ███╗
-  ██╔══██╗██╔══██╗██║╚══██╔══╝██╔══██╗████╗ ████║
+  ██╔══██╗██╔══██╗██║╚══██╔╝██╔══██╗████╗ ████║
   ██████╔╝██████╔╝██║   ██║   ███████║██╔████╔██║
   ██╔═══╝ ██╔══██╗██║   ██║   ██╔══██║██║╚██╔╝██║
   ██║     ██║  ██║██║   ██║   ██║  ██║██║ ╚═╝ ██║
   ╚═╝     ╚═╝  ╚═╝╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝
 EOF
     echo -e "${RESET}"
-
     echo -e "  ${WHITE}VPS MANAGEMENT TOOLKIT${RESET}"
     echo -e "  ${GRAY}Made with care by Pritam${RESET}"
     echo -e "  ${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo
 }
 
+# Download and validate a module before executing it.
 run_module() {
     local file="$1"
     local tmp
-    local url="${BASE}/${file}"
+    local url="${BASE}/${file}?v=2"
+    local result=0
+
+    if ! command -v curl >/dev/null 2>&1; then
+        echo -e "${RED}  [ERROR] curl is not installed.${RESET}"
+        pause
+        return 1
+    fi
 
     tmp="$(mktemp)" || {
-        echo -e "${RED}  [ERROR] Could not create temporary file.${RESET}"
+        echo -e "${RED}  [ERROR] Cannot create temporary file.${RESET}"
         pause
         return 1
     }
 
     echo
     echo -e "${CYAN}  [>] Loading module: ${WHITE}${file}${RESET}"
-    echo -e "${GRAY}  Downloading latest version from GitHub...${RESET}"
+    echo -e "${GRAY}  Downloading from GitHub...${RESET}"
 
     if ! curl -fsSL --connect-timeout 10 --max-time 60 \
         "$url" -o "$tmp"; then
         echo -e "${RED}  [ERROR] Module download failed.${RESET}"
-        echo -e "${YELLOW}  Check the GitHub filename and internet connection.${RESET}"
+        echo -e "${YELLOW}  Check the filename and GitHub main branch.${RESET}"
         rm -f "$tmp"
         pause
         return 1
     fi
 
-    if [[ ! -s "$tmp" ]]; then
-        echo -e "${RED}  [ERROR] Downloaded module is empty.${RESET}"
+    if [[ ! -s "$tmp" ]] || ! bash -n "$tmp"; then
+        echo -e "${RED}  [ERROR] Empty or invalid Bash script.${RESET}"
         rm -f "$tmp"
         pause
         return 1
     fi
 
-    if ! bash -n "$tmp"; then
-        echo -e "${RED}  [ERROR] Script syntax check failed.${RESET}"
-        echo -e "${YELLOW}  Fix the module on GitHub before running it.${RESET}"
-        rm -f "$tmp"
-        pause
-        return 1
-    fi
-
-    echo -e "${GREEN}  [OK] Module verified. Starting...${RESET}"
-    echo -e "${GRAY}  ──────────────────────────────────────────${RESET}"
+    echo -e "${GREEN}  [OK] Script verified. Starting...${RESET}"
     echo
 
-    bash "$tmp"
-    local result=$?
-
+    bash "$tmp" || result=$?
     rm -f "$tmp"
 
     echo
     if (( result == 0 )); then
-        echo -e "${GREEN}  [OK] Module finished.${RESET}"
+        echo -e "${GREEN}  [OK] Module finished successfully.${RESET}"
     else
         echo -e "${YELLOW}  [!] Module exited with code ${result}.${RESET}"
     fi
 
     pause
-    return 0
+    return "$result"
+}
+
+# Dedicated System Information launcher.
+run_system_info() {
+    run_module "system-info.sh"
 }
 
 panel_menu() {
+    local choice
+
     while true; do
         header
 
@@ -137,7 +140,7 @@ panel_menu() {
             3) run_module "uninstall.sh" ;;
             4) run_module "blueprint.sh" ;;
             5) run_module "cloudflare.sh" ;;
-            6) run_module "system-info.sh" ;;
+            6) run_system_info ;;
             7) run_module "tailscale.sh" ;;
             8) run_module "database.sh" ;;
             9) return ;;
@@ -147,6 +150,8 @@ panel_menu() {
 }
 
 main_menu() {
+    local choice
+
     while true; do
         header
 
@@ -177,9 +182,10 @@ main_menu() {
     done
 }
 
+# Startup checks
 if ! command -v curl >/dev/null 2>&1; then
     echo -e "${YELLOW}curl is required to download modules.${RESET}"
-    echo "Install it with: sudo apt-get install curl"
+    echo "Install it with: sudo apt-get update && sudo apt-get install -y curl"
     exit 1
 fi
 
