@@ -1,608 +1,574 @@
+
 #!/usr/bin/env bash
 
-# ══════════════════════════════════════════════════════════════
-#                 PRITAM PTERODACTYL INSTALLER
-#                    Professional Edition
-# ══════════════════════════════════════════════════════════════
+# ============================================================
+#              PRITAM PTERODACTYL CONTROL CENTER
+#                         Version 2.2
+# ============================================================
 
-set -Eeuo pipefail
+set -o pipefail
 umask 077
 
-# ── Neon Theme ────────────────────────────────────────────────
-CYAN='\033[38;5;51m'
-PURPLE='\033[38;5;141m'
-GRAY='\033[38;5;242m'
-WHITE='\033[38;5;255m'
-GREEN='\033[38;5;82m'
-RED='\033[38;5;196m'
-GOLD='\033[38;5;214m'
+# ---------- PROFESSIONAL COLOR THEME ----------
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[1;34m'
+PURPLE='\033[1;35m'
+CYAN='\033[1;36m'
+WHITE='\033[1;37m'
+GRAY='\033[0;90m'
+GOLD='\033[38;5;220m'
+BOLD='\033[1m'
 NC='\033[0m'
 
-REPO="pterodactyl/panel"
-PHP_VERSION="8.3"
 PANEL_DIR="/var/www/pterodactyl"
-DB_NAME="panel"
-DB_USER="pterodactyl"
+GITHUB_REPO="pterodactyl/panel"
 
-# ── UI Helpers ────────────────────────────────────────────────
-line() {
-    echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-}
+INSTALL_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/Panel/main/pterodactyl/install.sh"
+SSL_URL="https://raw.githubusercontent.com/nobita329/Nobita-Cloud/refs/heads/main/panel/pterodactyl/ssl.sh"
+PHPMYADMIN_URL="https://raw.githubusercontent.com/nobita329/Nobita-Cloud/refs/heads/main/panel/pterodactyl/phpMyAdmin.sh"
 
-step() {
+# ---------- UI HELPERS ----------
+show_header() {
+    clear
+    echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║${NC}       ${BOLD}${WHITE}PRITAM PTERODACTYL CONTROL CENTER${NC}           ${CYAN}║${NC}"
+    echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
+    echo -e "  ${GRAY}MODULE:${NC} ${GOLD}$1${NC}"
+    echo -e "${CYAN}────────────────────────────────────────────────────────────${NC}"
     echo
-    echo -e "${PURPLE}➜ ${WHITE}$*${NC}"
 }
 
-ok() {
-    echo -e "${GREEN}✔ $*${NC}"
-}
-
-warn() {
-    echo -e "${GOLD}⚠ $*${NC}"
-}
-
-die() {
-    echo -e "${RED}✖ $*${NC}" >&2
-    exit 1
+status_msg() {
+    case "$1" in
+        OK)   echo -e "  ${GREEN}[✔]${NC} $2" ;;
+        ERR)  echo -e "  ${RED}[✘]${NC} $2" ;;
+        INFO) echo -e "  ${CYAN}[➜]${NC} $2" ;;
+        WAIT) echo -e "  ${YELLOW}[...]${NC} $2" ;;
+        WARN) echo -e "  ${GOLD}[!]${NC} $2" ;;
+    esac
 }
 
 pause() {
     echo
-    read -rp "Press Enter to continue..." _ || true
+    read -r -p "  Press Enter to return to the menu..."
 }
 
-show_banner() {
-    clear 2>/dev/null || true
-    echo -e "${CYAN}"
-    cat <<'EOF'
-██████╗ ██████╗ ██╗████████╗ █████╗ ███╗   ███╗
-██╔══██╗██╔══██╗██║╚══██╔══╝██╔══██╗████╗ ████║
-██████╔╝██████╔╝██║   ██║   ███████║██╔████╔██║
-██╔═══╝ ██╔══██╗██║   ██║   ██╔══██║██║╚██╔╝██║
-██║     ██║  ██║██║   ██║   ██║  ██║██║ ╚═╝ ██║
-╚═╝     ╚═╝  ╚═╝╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝
-EOF
-    echo -e "${NC}"
-    echo -e "             ${WHITE}PRITAM PTERODACTYL INSTALLER${NC}"
-    echo -e "              ${PURPLE}Professional Edition${NC}"
-    line
-    echo
+panel_exists() {
+    [[ -f "$PANEL_DIR/artisan" && -f "$PANEL_DIR/.env" ]]
 }
 
-# ── Input Validation ──────────────────────────────────────────
-ask_value() {
-    local prompt="$1"
-    local default="$2"
-    local result
-
-    while true; do
-        read -rp "$(echo -e "${CYAN}•${NC} ${WHITE}${prompt}${NC} [${default}]: ")" result || die "Input cancelled."
-        result="${result:-$default}"
-
-        if [[ -n "$result" ]]; then
-            REPLY="$result"
-            return 0
-        fi
-    done
-}
-
-ask_secret() {
-    local prompt="$1"
-    local result
-
-    while true; do
-        read -rsp "$(echo -e "${CYAN}•${NC} ${WHITE}${prompt}${NC}: ")" result || die "Password input cancelled."
-        echo
-
-        if [[ ${#result} -ge 12 ]]; then
-            REPLY="$result"
-            return 0
-        fi
-
-        warn "Password must contain at least 12 characters. Try again."
-        result=""
-    done
-}
-
-validate_domain() {
-    [[ "$1" =~ ^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$ ]]
-}
-
-validate_email() {
-    [[ "$1" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]
-}
-
-validate_username() {
-    [[ "$1" =~ ^[A-Za-z0-9_]{3,32}$ ]]
-}
-
-# ── System Checks ─────────────────────────────────────────────
-check_system() {
-    [[ $EUID -eq 0 ]] || die "Run this script as root."
-    command -v curl >/dev/null 2>&1 || die "curl is required."
-    command -v python3 >/dev/null 2>&1 || die "python3 is required."
-    command -v openssl >/dev/null 2>&1 || die "openssl is required."
-
-    [[ -r /etc/os-release ]] || die "Cannot detect operating system."
-    # shellcheck disable=SC1091
-    source /etc/os-release
-
-    case "${ID:-}" in
-        ubuntu|debian) ;;
-        *) die "Supported operating systems: Ubuntu or Debian." ;;
-    esac
-
-    if [[ -f "${PANEL_DIR}/artisan" ]]; then
-        die "Pterodactyl Panel already exists at ${PANEL_DIR}. Refusing to overwrite it."
-    fi
-
-    if [[ -e "${PANEL_DIR}" ]]; then
-        [[ -d "${PANEL_DIR}" ]] || die "${PANEL_DIR} exists and is not a directory."
-        [[ -z "$(find "${PANEL_DIR}" -mindepth 1 -maxdepth 1 -print -quit)" ]] ||
-            die "${PANEL_DIR} is not empty. Back it up and inspect it first."
+require_root() {
+    if [[ "$EUID" -ne 0 ]]; then
+        status_msg ERR "Run this tool as root."
+        return 1
     fi
 }
 
-# ── Version Selector ──────────────────────────────────────────
-select_version() {
-    step "Fetching official Pterodactyl releases"
+# Download to a temporary file first, then execute only if successful.
+run_remote_script() {
+    local url="$1"
+    local name="$2"
+    local tmp
 
-    local json
-    json="$(mktemp)"
-    local choices=()
-
-    if ! curl -fsSL --connect-timeout 10 --max-time 30 \
-        "https://api.github.com/repos/${REPO}/releases?per_page=20" \
-        -o "$json"; then
-        rm -f "$json"
-        die "Could not fetch releases from GitHub."
-    fi
-
-    mapfile -t choices < <(
-        python3 -c '
-import json,sys
-try:
-    data=json.load(open(sys.argv[1]))
-    for r in data:
-        tag=r.get("tag_name","")
-        if tag and not r.get("prerelease",False) and not r.get("draft",False):
-            print(tag)
-except Exception:
-    sys.exit(1)
-' "$json"
-    ) || {
-        rm -f "$json"
-        die "Could not parse release information."
+    tmp="$(mktemp)" || {
+        status_msg ERR "Could not create temporary file."
+        return 1
     }
 
-    rm -f "$json"
+    status_msg INFO "Downloading ${name}..."
 
-    ((${#choices[@]} > 0)) || die "No stable releases were returned."
-
-    echo
-    local i
-    for i in "${!choices[@]}"; do
-        printf "  %2d) %s\n" "$((i + 1))" "${choices[$i]}"
-    done
-
-    echo
-    echo "  0) Cancel installation"
-    echo
-
-    while true; do
-        read -rp "Choose release [1-${#choices[@]}]: " selection || die "Input cancelled."
-
-        if [[ "$selection" == "0" ]]; then
-            exit 0
-        elif [[ "$selection" =~ ^[0-9]+$ ]] &&
-             ((selection >= 1 && selection <= ${#choices[@]})); then
-            VERSION="${choices[$((selection - 1))]}"
-            break
-        fi
-
-        warn "Select a listed version."
-    done
-
-    ok "Selected release: ${VERSION}"
-}
-
-# ── Configuration ─────────────────────────────────────────────
-collect_config() {
-    echo -e "${CYAN}CONFIGURATION${NC}"
-    line
-
-    while true; do
-        ask_value "Panel domain (DNS must point to this VPS)" "panel.example.com"
-        DOMAIN="$REPLY"
-        validate_domain "$DOMAIN" && break
-        warn "Enter a valid domain name."
-    done
-
-    while true; do
-        ask_value "Administrator email" "admin@example.com"
-        EMAIL="$REPLY"
-        validate_email "$EMAIL" && break
-        warn "Enter a valid email address."
-    done
-
-    while true; do
-        ask_value "Administrator username" "pritam"
-        USERNAME="$REPLY"
-        validate_username "$USERNAME" && break
-        warn "Use 3-32 letters, numbers, or underscores."
-    done
-
-    ask_secret "Administrator password (12+ characters)"
-    ADMIN_PASSWORD="$REPLY"
-
-    select_version
-
-    echo
-    line
-    echo -e "${WHITE}REVIEW CONFIGURATION${NC}"
-    echo "  Domain   : ${DOMAIN}"
-    echo "  Email    : ${EMAIL}"
-    echo "  Username : ${USERNAME}"
-    echo "  Version  : ${VERSION}"
-    echo "  Password : [hidden]"
-    line
-
-    local confirm
-    read -rp "Start installation? Type YES: " confirm || die "Input cancelled."
-    [[ "$confirm" == "YES" ]] || die "Installation cancelled."
-}
-
-# ── Dependencies ──────────────────────────────────────────────
-install_dependencies() {
-    step "Installing system dependencies"
-
-    export DEBIAN_FRONTEND=noninteractive
-
-    apt-get update
-    apt-get install -y \
-        ca-certificates curl gnupg unzip git tar sudo \
-        lsb-release openssl python3 cron mariadb-server \
-        nginx redis-server certbot python3-certbot-nginx \
-        software-properties-common
-
-    if [[ "${ID}" == "ubuntu" ]]; then
-        add-apt-repository -y ppa:ondrej/php
-    else
-        install -d -m 0755 /usr/share/keyrings
-        curl -fsSL https://packages.sury.org/php/apt.gpg |
-            gpg --dearmor --yes -o /usr/share/keyrings/sury-php.gpg
-
-        echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ ${VERSION_CODENAME} main" \
-            > /etc/apt/sources.list.d/sury-php.list
+    if ! curl --fail --location --silent --show-error \
+        --connect-timeout 15 --max-time 300 "$url" -o "$tmp"; then
+        status_msg ERR "Download failed. Nothing was executed."
+        rm -f "$tmp"
+        return 1
     fi
 
-    apt-get update
+    if [[ ! -s "$tmp" ]] || ! bash -n "$tmp"; then
+        status_msg ERR "Downloaded script is empty or has a syntax error."
+        rm -f "$tmp"
+        return 1
+    fi
 
-    apt-get install -y \
-        "php${PHP_VERSION}" \
-        "php${PHP_VERSION}-cli" \
-        "php${PHP_VERSION}-fpm" \
-        "php${PHP_VERSION}-common" \
-        "php${PHP_VERSION}-mysql" \
-        "php${PHP_VERSION}-mbstring" \
-        "php${PHP_VERSION}-bcmath" \
-        "php${PHP_VERSION}-xml" \
-        "php${PHP_VERSION}-zip" \
-        "php${PHP_VERSION}-curl" \
-        "php${PHP_VERSION}-gd" \
-        "php${PHP_VERSION}-intl" \
-        "php${PHP_VERSION}-redis"
+    status_msg INFO "Launching ${name}..."
+    bash "$tmp"
+    local rc=$?
+    rm -f "$tmp"
 
-    systemctl enable --now mariadb nginx redis-server "php${PHP_VERSION}-fpm" cron
-
-    ok "Dependencies installed"
+    if [[ "$rc" -eq 0 ]]; then
+        status_msg OK "${name} finished."
+    else
+        status_msg ERR "${name} exited with status ${rc}."
+    fi
+    return "$rc"
 }
 
-# ── Composer ───────────────────────────────────────────────────
-install_composer() {
-    step "Installing Composer"
+# ==================== 1. INSTALL ====================
+install_ptero() {
+    show_header "PANEL INSTALLATION"
 
-    if command -v composer >/dev/null 2>&1; then
-        ok "Composer already installed"
+    if panel_exists; then
+        status_msg WARN "A Panel installation already exists."
+        status_msg INFO "Use Update for an existing installation."
+        pause
         return
     fi
 
-    local installer expected actual
-    installer="$(mktemp)"
-    expected="$(mktemp)"
-
-    curl -fsSL https://composer.github.io/installer.sig -o "$expected"
-    curl -fsSL https://getcomposer.org/installer -o "$installer"
-
-    actual="$(php -r "echo hash_file('sha384', '$installer');")"
-    local wanted
-    wanted="$(cat "$expected")"
-
-    if [[ "$actual" != "$wanted" ]]; then
-        rm -f "$installer" "$expected"
-        die "Composer installer checksum verification failed."
+    if ! command -v curl >/dev/null 2>&1; then
+        status_msg ERR "curl is not installed."
+        pause
+        return
     fi
 
-    php "$installer" --install-dir=/usr/local/bin --filename=composer
-    rm -f "$installer" "$expected"
-
-    ok "Composer installed"
+    run_remote_script "$INSTALL_URL" "Pterodactyl Panel Installer"
+    pause
 }
 
-# ── Database Setup ────────────────────────────────────────────
-setup_database() {
-    step "Configuring local MariaDB"
+# ==================== 2. USER MANAGEMENT ====================
+create_user() {
+    show_header "USER MANAGEMENT"
 
-    DB_PASS="$(openssl rand -hex 24)"
+    if ! panel_exists; then
+        status_msg ERR "Panel installation or .env file not found."
+        pause
+        return
+    fi
 
-    mariadb -e "CREATE DATABASE \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    mariadb -e "CREATE USER '${DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASS}';"
-    mariadb -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'127.0.0.1';"
-    mariadb -e "FLUSH PRIVILEGES;"
+    echo -e "  ${GREEN}1)${NC} Create Custom User"
+    echo -e "  ${GREEN}2)${NC} Create Random Admin User"
+    echo -e "  ${GRAY}0) Back${NC}"
+    echo
 
-    ok "Database and restricted local database account created"
+    read -r -p "  Select option: " choice
+
+    case "$choice" in
+        1)
+            status_msg INFO "Opening the official user creation command..."
+            (
+                cd "$PANEL_DIR" || exit 1
+                php artisan p:user:make
+            )
+            ;;
+        2)
+            if ! command -v openssl >/dev/null 2>&1; then
+                status_msg ERR "openssl is required."
+                pause
+                return
+            fi
+
+            local username password email first last
+            username="admin$(openssl rand -hex 4)"
+            password="$(openssl rand -hex 16)"
+            email="admin-$(openssl rand -hex 4)@example.com"
+            first="Pritam"
+            last="Admin"
+
+            status_msg WAIT "Creating administrator account..."
+
+            if (
+                cd "$PANEL_DIR" &&
+                php artisan p:user:make -n \
+                    --email="$email" \
+                    --username="$username" \
+                    --password="$password" \
+                    --admin=1 \
+                    --name-first="$first" \
+                    --name-last="$last"
+            ); then
+                echo
+                status_msg OK "Admin account created."
+                echo -e "  ${CYAN}Username:${NC} $username"
+                echo -e "  ${CYAN}Email:${NC}    $email"
+                echo -e "  ${CYAN}Password:${NC} $password"
+                status_msg WARN "Save this password securely. Do not share it."
+                status_msg INFO "Replace the example email with a real email if needed."
+            else
+                status_msg ERR "User creation failed. Check the error above."
+            fi
+            ;;
+        0) return ;;
+        *) status_msg ERR "Invalid option." ;;
+    esac
+
+    pause
 }
 
-# ── Download Panel ─────────────────────────────────────────────
-download_panel() {
-    step "Downloading Pterodactyl ${VERSION}"
+# ==================== 3. UPDATE ====================
+update_panel() {
+    show_header "PANEL UPDATE"
 
-    mkdir -p "$PANEL_DIR"
-    cd "$PANEL_DIR"
+    if ! panel_exists; then
+        status_msg ERR "Panel not found. Install it first."
+        pause
+        return
+    fi
 
-    local archive
-    archive="$(mktemp)"
+    for cmd in curl tar composer php; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            status_msg ERR "Required command missing: $cmd"
+            pause
+            return
+        fi
+    done
 
-    curl -fL --retry 3 \
-        "https://github.com/${REPO}/releases/download/${VERSION}/panel.tar.gz" \
-        -o "$archive"
-
-    tar -tzf "$archive" >/dev/null ||
-        die "Panel archive validation failed."
-
-    tar -xzf "$archive" -C "$PANEL_DIR"
-    rm -f "$archive"
-
-    [[ -f .env.example ]] || die "Downloaded release is missing .env.example."
-
-    cp .env.example .env
-    chmod -R 755 storage bootstrap/cache
-
-    ok "Panel files downloaded"
-}
-
-# ── Environment ────────────────────────────────────────────────
-configure_environment() {
-    step "Configuring Panel environment"
-
-    cd "$PANEL_DIR"
-
-    # Write values using PHP so special characters in passwords
-    # do not break the .env file.
-    export PRITAM_DOMAIN="$DOMAIN"
-    export PRITAM_DB_NAME="$DB_NAME"
-    export PRITAM_DB_USER="$DB_USER"
-    export PRITAM_DB_PASS="$DB_PASS"
-
-    php <<'PHP'
-<?php
-$file = '.env';
-$env = file_get_contents($file);
-
-$values = [
-    'APP_URL' => 'https://' . getenv('PRITAM_DOMAIN'),
-    'APP_ENV' => 'production',
-    'APP_DEBUG' => 'false',
-    'APP_ENVIRONMENT_ONLY' => 'false',
-    'DB_CONNECTION' => 'mysql',
-    'DB_HOST' => '127.0.0.1',
-    'DB_PORT' => '3306',
-    'DB_DATABASE' => getenv('PRITAM_DB_NAME'),
-    'DB_USERNAME' => getenv('PRITAM_DB_USER'),
-    'DB_PASSWORD' => getenv('PRITAM_DB_PASS'),
-];
-
-foreach ($values as $key => $value) {
-    $line = $key . '=' . $value;
-    $pattern = '/^' . preg_quote($key, '/') . '=.*$/m';
-
-    if (preg_match($pattern, $env)) {
-        $env = preg_replace($pattern, $line, $env);
-    } else {
-        $env .= "\n" . $line . "\n";
+    local workdir archive staging backup version choice
+    workdir="$(mktemp -d)" || {
+        status_msg ERR "Could not create temporary directory."
+        pause
+        return
     }
-}
 
-file_put_contents($file, $env);
-PHP
+    archive="$workdir/panel.tar.gz"
+    staging="$workdir/staging"
+    backup="${PANEL_DIR}.backup.$(date +%Y%m%d-%H%M%S)"
 
-    unset PRITAM_DB_PASS DB_PASS
+    status_msg INFO "Fetching official Panel releases..."
 
-    ok "Environment configured"
-}
+    local json
+    if ! json="$(curl -fsSL --connect-timeout 15 --max-time 60 \
+        "https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=20")"; then
+        status_msg ERR "Could not fetch releases."
+        rm -rf -- "$workdir"
+        pause
+        return
+    fi
 
-# ── Application Setup ──────────────────────────────────────────
-setup_application() {
-    step "Installing PHP dependencies"
+    if ! command -v python3 >/dev/null 2>&1; then
+        status_msg ERR "python3 is required to read release information."
+        rm -rf -- "$workdir"
+        pause
+        return
+    fi
 
-    cd "$PANEL_DIR"
-    COMPOSER_ALLOW_SUPERUSER=1 composer install \
-        --no-dev --optimize-autoloader --no-interaction
+    mapfile -t tags < <(
+        printf '%s' "$json" | python3 -c '
+import json, sys
+try:
+    releases = json.load(sys.stdin)
+    for release in releases:
+        tag = release.get("tag_name", "")
+        if tag and not release.get("prerelease", False) and not release.get("draft", False):
+            print(tag)
+except Exception:
+    pass
+' | head -20
+    )
 
-    php artisan key:generate --force
-    php artisan migrate --seed --force
+    if [[ "${#tags[@]}" -eq 0 ]]; then
+        status_msg ERR "No stable releases found."
+        rm -rf -- "$workdir"
+        pause
+        return
+    fi
 
+    echo
+    echo -e "  ${BOLD}${WHITE}Available stable versions${NC}"
+    local i
+    for i in "${!tags[@]}"; do
+        printf "  %b[%d]%b %s\n" "$GREEN" "$((i + 1))" "$NC" "${tags[$i]}"
+    done
+    echo
+    read -r -p "  Select version [1 = latest] (0 = cancel): " choice
+    choice="${choice:-1}"
+
+    if [[ "$choice" == "0" ]]; then
+        status_msg INFO "Update cancelled."
+        rm -rf -- "$workdir"
+        pause
+        return
+    fi
+
+    if [[ ! "$choice" =~ ^[0-9]+$ ]] ||
+       (( choice < 1 || choice > ${#tags[@]} )); then
+        status_msg ERR "Invalid version selection."
+        rm -rf -- "$workdir"
+        pause
+        return
+    fi
+
+    version="${tags[$((choice - 1))]}"
+
+    echo
+    status_msg INFO "Selected version: $version"
+    status_msg WARN "A backup of the current panel files will be created."
+    status_msg WARN "Ensure you also have a recent database backup."
+    read -r -p "  Type YES to continue: " confirm
+
+    if [[ "$confirm" != "YES" ]]; then
+        status_msg INFO "Update cancelled."
+        rm -rf -- "$workdir"
+        pause
+        return
+    fi
+
+    local download_url="https://github.com/${GITHUB_REPO}/releases/download/${version}/panel.tar.gz"
+
+    status_msg WAIT "Downloading release..."
+
+    if ! curl -fL --connect-timeout 15 --max-time 600 \
+        "$download_url" -o "$archive"; then
+        status_msg ERR "Download failed. Existing panel was not changed."
+        rm -rf -- "$workdir"
+        pause
+        return
+    fi
+
+    if ! tar -tzf "$archive" >/dev/null 2>&1; then
+        status_msg ERR "Downloaded archive is invalid. Existing panel was not changed."
+        rm -rf -- "$workdir"
+        pause
+        return
+    fi
+
+    mkdir -p "$staging"
+
+    if ! tar -xzf "$archive" -C "$staging"; then
+        status_msg ERR "Could not extract release."
+        rm -rf -- "$workdir"
+        pause
+        return
+    fi
+
+    if [[ ! -f "$staging/artisan" ]]; then
+        status_msg ERR "Release archive does not contain the expected Panel files."
+        rm -rf -- "$workdir"
+        pause
+        return
+    fi
+
+    # Preserve configuration and user-uploaded storage.
+    if ! cp -a "$PANEL_DIR/.env" "$staging/.env"; then
+        status_msg ERR "Could not preserve the existing .env file."
+        rm -rf -- "$workdir"
+        pause
+        return
+    fi
+
+    if [[ -d "$PANEL_DIR/storage" ]]; then
+        if ! cp -a "$PANEL_DIR/storage/." "$staging/storage/"; then
+            status_msg ERR "Could not preserve storage files."
+            rm -rf -- "$workdir"
+            pause
+            return
+        fi
+    fi
+
+    status_msg WAIT "Creating panel file backup..."
+
+    if ! cp -a "$PANEL_DIR" "$backup"; then
+        status_msg ERR "Backup failed. Existing panel was not changed."
+        rm -rf -- "$workdir"
+        pause
+        return
+    fi
+
+    # Move the old directory aside; do not delete it.
+    local olddir="${PANEL_DIR}.old.$$"
+    if ! mv "$PANEL_DIR" "$olddir"; then
+        status_msg ERR "Could not move existing panel."
+        rm -rf -- "$workdir"
+        pause
+        return
+    fi
+
+    if ! mv "$staging" "$PANEL_DIR"; then
+        mv "$olddir" "$PANEL_DIR"
+        status_msg ERR "Could not install staged release; restored previous files."
+        rm -rf -- "$workdir"
+        pause
+        return
+    fi
+
+    status_msg WAIT "Installing dependencies..."
+
+    if ! (
+        cd "$PANEL_DIR" &&
+        COMPOSER_ALLOW_SUPERUSER=1 composer install \
+            --no-dev --optimize-autoloader --no-interaction
+    ); then
+        status_msg ERR "Composer failed. Restoring previous panel files."
+        mv "$PANEL_DIR" "${PANEL_DIR}.failed.$$"
+        mv "$olddir" "$PANEL_DIR"
+        status_msg WARN "Check database state before trying again."
+        status_msg INFO "Backup copy: $backup"
+        rm -rf -- "$workdir"
+        pause
+        return
+    fi
+
+    status_msg WAIT "Running migrations..."
+
+    if ! (
+        cd "$PANEL_DIR" &&
+        php artisan view:clear &&
+        php artisan config:clear &&
+        php artisan migrate --seed --force &&
+        php artisan queue:restart
+    ); then
+        status_msg ERR "Migration/update failed."
+        status_msg WARN "Database migrations may have changed the database."
+        status_msg WARN "Do not delete the backup; inspect logs and database before recovery."
+        status_msg INFO "File backup: $backup"
+        rm -rf -- "$workdir"
+        pause
+        return
+    fi
+
+    chmod -R 755 "$PANEL_DIR/storage" "$PANEL_DIR/bootstrap/cache" 2>/dev/null || true
     chown -R www-data:www-data "$PANEL_DIR"
-    chmod -R 755 storage bootstrap/cache
 
-    # Install the scheduler entry without duplicating it.
-    local cron_entry
-    cron_entry="* * * * * php ${PANEL_DIR}/artisan schedule:run >> /dev/null 2>&1"
-
-    (crontab -u www-data -l 2>/dev/null | grep -vF "${PANEL_DIR}/artisan schedule:run" || true
-     echo "$cron_entry") | crontab -u www-data -
-
-    ok "Application configured"
-}
-
-# ── Nginx ──────────────────────────────────────────────────────
-configure_nginx() {
-    step "Configuring Nginx"
-
-    cat > /etc/nginx/sites-available/pterodactyl.conf <<EOF
-server {
-    listen 80;
-    server_name ${DOMAIN};
-
-    root ${PANEL_DIR}/public;
-    index index.php;
-
-    client_max_body_size 100m;
-    client_body_timeout 120s;
-    sendfile off;
-
-    location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
-    }
-
-    location ~ \.php\$ {
-        fastcgi_split_path_info ^(.+\.php)(/.+)\$;
-        fastcgi_pass unix:/run/php/php${PHP_VERSION}-fpm.sock;
-        fastcgi_index index.php;
-        include fastcgi_params;
-        fastcgi_param PHP_VALUE "upload_max_filesize=100M \n post_max_size=100M";
-        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
-    }
-
-    location ~ /\. {
-        deny all;
-    }
-}
-EOF
-
-    ln -sfn /etc/nginx/sites-available/pterodactyl.conf \
-        /etc/nginx/sites-enabled/pterodactyl.conf
-
-    nginx -t
-    systemctl reload nginx
-
-    ok "Nginx configured"
-}
-
-# ── HTTPS ──────────────────────────────────────────────────────
-configure_ssl() {
-    step "Requesting HTTPS certificate"
-
-    echo "The domain must resolve to this VPS and ports 80/443 must be reachable."
-
-    if certbot --nginx \
-        --non-interactive \
-        --agree-tos \
-        --redirect \
-        --email "$EMAIL" \
-        -d "$DOMAIN"; then
-        ok "HTTPS certificate configured"
-    else
-        warn "Automatic HTTPS setup failed."
-        warn "Check DNS, firewall rules, and run certbot manually after fixing them."
-        warn "The Panel may not be reachable securely until HTTPS is configured."
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl restart pteroq.service 2>/dev/null || true
     fi
+
+    rm -rf -- "$olddir" "$workdir"
+
+    status_msg OK "Panel update completed: $version"
+    status_msg INFO "Backup retained at: $backup"
+    pause
 }
 
-# ── Queue Worker ───────────────────────────────────────────────
-configure_queue() {
-    step "Configuring queue worker"
+# ==================== 4. DOMAIN & SSL ====================
+domain_ssl() {
+    show_header "DOMAIN & SSL"
 
-    cat > /etc/systemd/system/pteroq.service <<EOF
-[Unit]
-Description=PRITAM Pterodactyl Queue Worker
-After=redis-server.service mariadb.service
-Requires=redis-server.service
+    status_msg WARN "This option runs your configured external SSL script."
+    status_msg INFO "Make sure the domain points to this server."
 
-[Service]
-User=www-data
-Group=www-data
-WorkingDirectory=${PANEL_DIR}
-Restart=always
-ExecStart=/usr/bin/php ${PANEL_DIR}/artisan queue:work --queue=high,standard,low --sleep=3 --tries=3
-RestartSec=5s
+    run_remote_script "$SSL_URL" "Domain and SSL Tool"
+    pause
+}
 
-[Install]
-WantedBy=multi-user.target
-EOF
-
+# ==================== 5. UNINSTALL ====================
+uninstall_logic() {
+    status_msg WAIT "Stopping Panel queue service..."
+    systemctl stop pteroq.service 2>/dev/null || true
+    systemctl disable pteroq.service 2>/dev/null || true
+    rm -f /etc/systemd/system/pteroq.service
     systemctl daemon-reload
-    systemctl enable --now pteroq.service
 
-    ok "Queue worker enabled"
+    status_msg WAIT "Removing Panel schedule cron entry..."
+    local current_cron
+    current_cron="$(crontab -l 2>/dev/null || true)"
+    if [[ -n "$current_cron" ]]; then
+        printf '%s\n' "$current_cron" |
+            grep -vE 'pterodactyl/artisan schedule:run' |
+            crontab - 2>/dev/null || true
+    fi
+
+    status_msg WARN "Removing Panel files..."
+    rm -rf -- "$PANEL_DIR"
+
+    status_msg WARN "Dropping the default Panel database and database user..."
+    status_msg WARN "This permanently deletes database 'panel' if it exists."
+
+    if command -v mysql >/dev/null 2>&1; then
+        mysql -u root -e "DROP DATABASE IF EXISTS panel;" 2>/dev/null || \
+            status_msg WARN "Could not drop database automatically; check database credentials."
+        mysql -u root -e "DROP USER IF EXISTS 'pterodactyl'@'127.0.0.1'; FLUSH PRIVILEGES;" \
+            2>/dev/null || true
+    elif command -v mariadb >/dev/null 2>&1; then
+        mariadb -u root -e "DROP DATABASE IF EXISTS panel;" 2>/dev/null || true
+        mariadb -u root -e "DROP USER IF EXISTS 'pterodactyl'@'127.0.0.1'; FLUSH PRIVILEGES;" \
+            2>/dev/null || true
+    fi
+
+    status_msg INFO "Removing the named Pterodactyl Nginx configuration..."
+    rm -f /etc/nginx/sites-enabled/pterodactyl.conf
+    rm -f /etc/nginx/sites-available/pterodactyl.conf
+    nginx -t >/dev/null 2>&1 && systemctl reload nginx 2>/dev/null || true
 }
 
-# ── Admin Account ──────────────────────────────────────────────
-create_admin() {
-    step "Creating administrator account"
+uninstall_ptero() {
+    show_header "PANEL UNINSTALLATION"
 
-    cd "$PANEL_DIR"
-
-    php artisan p:user:make \
-        --email="$EMAIL" \
-        --username="$USERNAME" \
-        --name-first="Pritam" \
-        --name-last="Admin" \
-        --password="$ADMIN_PASSWORD" \
-        --admin=1
-
-    unset ADMIN_PASSWORD
-
-    ok "Administrator account created"
-}
-
-# ── Final Report ───────────────────────────────────────────────
-final_report() {
-    cd "$PANEL_DIR"
-
-    php artisan view:clear
-    php artisan config:clear
-    php artisan cache:clear
-    php artisan config:cache
-    php artisan queue:restart
-
-    chown -R www-data:www-data "$PANEL_DIR"
-
-    clear
-    line
-    echo -e "${GREEN}             PRITAM PANEL INSTALLATION FINISHED${NC}"
-    line
+    echo -e "  ${RED}${BOLD}WARNING: THIS ACTION IS DESTRUCTIVE${NC}"
+    echo -e "  It deletes ${WHITE}${PANEL_DIR}${NC}, the default ${WHITE}panel${NC} database,"
+    echo -e "  and the default Pterodactyl database user."
+    echo -e "  ${YELLOW}Wings and other databases are not intentionally removed.${NC}"
     echo
-    echo -e "  ${WHITE}Panel URL :${NC} https://${DOMAIN}"
-    echo -e "  ${WHITE}Username  :${NC} ${USERNAME}"
-    echo -e "  ${WHITE}Email     :${NC} ${EMAIL}"
-    echo -e "  ${WHITE}Password  :${NC} Not displayed for security"
+    read -r -p "  Type DELETE to confirm: " confirm
+
+    if [[ "$confirm" != "DELETE" ]]; then
+        status_msg INFO "Uninstallation cancelled."
+        pause
+        return
+    fi
+
+    uninstall_logic
     echo
-    warn "Save your credentials securely."
-    warn "Configure outgoing mail in .env before relying on email features."
-    line
+    status_msg OK "Panel removal routine finished. Review any warnings above."
+    pause
 }
 
-# ── Main ───────────────────────────────────────────────────────
-main() {
-    show_banner
+# ==================== 6. PHPMYADMIN ====================
+phpmyadmin_tool() {
+    show_header "PHPMYADMIN"
 
-    check_system
-    collect_config
-
-    install_dependencies
-    install_composer
-    setup_database
-    download_panel
-    configure_environment
-    setup_application
-    configure_nginx
-    configure_ssl
-    configure_queue
-    create_admin
-    final_report
+    run_remote_script "$PHPMYADMIN_URL" "phpMyAdmin Tool"
+    pause
 }
 
-main "$@"
+# ==================== MAIN MENU ====================
+main_menu() {
+    while true; do
+        clear
 
+        echo -e "${CYAN}  ____  ____  ___ _____ _   _  __  __${NC}"
+        echo -e "${CYAN} |  _ \\|  _ \\|_ _|_   _/ \\ | | \\ \\/ /${NC}"
+        echo -e "${BLUE} | |_) | |_) || |  | | / _ \\| |  \\  / ${NC}"
+        echo -e "${BLUE} |  __/|  _ < | |  | |/ ___ \\ |  /  \\ ${NC}"
+        echo -e "${PURPLE} |_|   |_| \\_\\___| |_/_/   \\_\\_| /_/\\_\\${NC}"
+        echo
+        echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${CYAN}║${NC}           ${BOLD}${WHITE}PRITAM PTERODACTYL CONTROL CENTER${NC}          ${CYAN}║${NC}"
+        echo -e "${CYAN}╠══════════════════════════════════════════════════════════╣${NC}"
+
+        if panel_exists; then
+            echo -e "${CYAN}║${NC}  Panel Status : ${GREEN}${BOLD}INSTALLED ✔${NC}                            ${CYAN}║${NC}"
+        elif [[ -d "$PANEL_DIR" ]]; then
+            echo -e "${CYAN}║${NC}  Panel Status : ${YELLOW}INCOMPLETE / CHECK FILES${NC}               ${CYAN}║${NC}"
+        else
+            echo -e "${CYAN}║${NC}  Panel Status : ${RED}${BOLD}NOT INSTALLED ✘${NC}                        ${CYAN}║${NC}"
+        fi
+
+        echo -e "${CYAN}╠══════════════════════════════════════════════════════════╣${NC}"
+        echo -e "${CYAN}║${NC}  ${GREEN}[1]${NC} Install Panel       ${GRAY}Fresh Installation${NC}             ${CYAN}║${NC}"
+        echo -e "${CYAN}║${NC}  ${GREEN}[2]${NC} User Management     ${GRAY}Add Admin / User${NC}                ${CYAN}║${NC}"
+        echo -e "${CYAN}║${NC}  ${GOLD}[3]${NC} Update Panel        ${GRAY}Choose Release${NC}                  ${CYAN}║${NC}"
+        echo -e "${CYAN}║${NC}  ${BLUE}[4]${NC} Domain & SSL        ${GRAY}Domain / HTTPS${NC}                  ${CYAN}║${NC}"
+        echo -e "${CYAN}║${NC}  ${RED}[5]${NC} Uninstall Panel     ${GRAY}Remove Panel Data${NC}               ${CYAN}║${NC}"
+        echo -e "${CYAN}║${NC}  ${PURPLE}[6]${NC} phpMyAdmin          ${GRAY}Database Tool${NC}                   ${CYAN}║${NC}"
+        echo -e "${CYAN}║${NC}                                                          ${CYAN}║${NC}"
+        echo -e "${CYAN}║${NC}  ${WHITE}[0] Exit${NC}                                               ${CYAN}║${NC}"
+        echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
+        echo
+        echo -ne "${BOLD}${GREEN}  PRITAM@PANEL ${CYAN}➜ ${NC}"
+        read -r choice
+
+        case "$choice" in
+            1) install_ptero ;;
+            2) create_user ;;
+            3) update_panel ;;
+            4) domain_ssl ;;
+            5) uninstall_ptero ;;
+            6) phpmyadmin_tool ;;
+            0) clear; exit 0 ;;
+            *) status_msg ERR "Invalid option."; sleep 1 ;;
+        esac
+    done
+}
+
+# ==================== START ====================
+if ! require_root; then
+    exit 1
+fi
+
+if ! command -v curl >/dev/null 2>&1; then
+    status_msg ERR "curl is required. Install it before using this tool."
+    exit 1
+fi
+
+main_menu
