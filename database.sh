@@ -1,424 +1,248 @@
-
 #!/usr/bin/env bash
+# PRITAM MySQL / MariaDB Database Setup
+set -Eeuo pipefail
 
-# ═════════════════════════════════════════════════════
-#          PRITAM DATABASE MANAGEMENT TOOL
-#             MySQL / MariaDB Edition
-# ═════════════════════════════════════════════════════
+PURPLE='\033[1;35m'; CYAN='\033[1;36m'; GREEN='\033[1;32m'
+RED='\033[1;31m'; YELLOW='\033[1;33m'; WHITE='\033[1;37m'
+GRAY='\033[0;37m'; ORANGE='\033[38;5;208m'; RESET='\033[0m'; BOLD='\033[1m'
+DB_CLIENT=""; DB_SERVICE=""; ADMIN_USER="root"; ADMIN_PASSWORD=""; AUTH_MODE="socket"
 
-set -o pipefail
-
-PURPLE='\033[1;35m'
-CYAN='\033[1;36m'
-GREEN='\033[1;32m'
-RED='\033[1;31m'
-YELLOW='\033[1;33m'
-WHITE='\033[1;37m'
-GRAY='\033[0;37m'
-ORANGE='\033[38;5;208m'
-RESET='\033[0m'
-BOLD='\033[1m'
-
-DB_CLIENT=""
-DB_TYPE=""
-ADMIN_USER="root"
-ADMIN_PASSWORD=""
-AUTH_MODE=""
-
-pause() {
-    echo
-    read -rp "Press Enter to continue..." _
-}
-
-line() {
-    echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-}
+line() { echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"; }
+finish() { echo; read -rp "Press Enter to continue..." _ || true; }
+cleanup() { unset ADMIN_PASSWORD DB_PASSWORD MYSQL_PWD 2>/dev/null || true; }
+trap cleanup EXIT
 
 header() {
-    clear 2>/dev/null || true
-    echo
-    echo -e "${PURPLE}${BOLD}"
-    cat <<'EOF'
+  clear 2>/dev/null || true
+  echo -e "${PURPLE}${BOLD}"
+  cat <<'BANNER'
   ____        _        _           _
  |  _ \  __ _| |_ __ _| |__   __ _| |_ ___
  | | | |/ _` | __/ _` | '_ \ / _` | __/ __|
- | |_| | (_| | || (_| | |_) | (_| | |_\__ \
- |____/ \__,_|\__\__,_|_.__/ \__,_|\__|___/
-EOF
-    echo -e "${RESET}"
-    echo -e "       ${ORANGE}${BOLD}PRITAM DATABASE MANAGER${RESET}"
-    echo -e "       ${CYAN}MySQL / MariaDB Setup${RESET}"
-    line
-    echo
+ | |_| | (_| | || (_| | |_) | (_| | ||  __/
+ |____/ \__,_|\__\__,_|_.__/ \__,_|\__\___|
+BANNER
+  echo -e "${RESET}       ${ORANGE}${BOLD}PRITAM DATABASE SETUP${RESET}"
+  echo -e "       ${CYAN}MySQL / MariaDB Edition${RESET}"
+  line
+  echo
 }
 
-detect_database() {
-    DB_CLIENT=""
-    DB_TYPE=""
+fail() { echo -e "${RED}✖ $*${RESET}"; return 1; }
 
-    if command -v mariadb >/dev/null 2>&1; then
-        DB_CLIENT="$(command -v mariadb)"
-        DB_TYPE="MariaDB-compatible client"
-    elif command -v mysql >/dev/null 2>&1; then
-        DB_CLIENT="$(command -v mysql)"
-        DB_TYPE="MySQL-compatible client"
-    fi
-
-    [[ -n "$DB_CLIENT" ]]
-}
-
-detect_server_service() {
-    if command -v systemctl >/dev/null 2>&1; then
-        if systemctl is-active --quiet mariadb 2>/dev/null; then
-            echo "mariadb"
-            return 0
-        elif systemctl is-active --quiet mysql 2>/dev/null; then
-            echo "mysql"
-            return 0
-        elif systemctl is-active --quiet mysqld 2>/dev/null; then
-            echo "mysqld"
-            return 0
-        fi
-    fi
-    return 1
-}
-
-sql_escape() {
-    local value="$1"
-    value="${value//\\/\\\\}"
-    value="${value//\'/\'\'}"
-    printf '%s' "$value"
-}
-
-valid_identifier() {
-    [[ "$1" =~ ^[a-zA-Z_][a-zA-Z0-9_]{0,63}$ ]]
-}
-
-db_query() {
-    if [[ "$AUTH_MODE" == "socket" ]]; then
-        "$DB_CLIENT" -u "$ADMIN_USER" --batch --skip-column-names "$@"
-    else
-        MYSQL_PWD="$ADMIN_PASSWORD" \
-            "$DB_CLIENT" -u "$ADMIN_USER" --batch --skip-column-names "$@"
-    fi
-}
-
-connect_admin() {
-    local result
-
-    echo -e "${CYAN}Checking database administrator access...${RESET}"
-
-    # First try local root/socket authentication.
-    if [[ $EUID -eq 0 ]] &&
-       "$DB_CLIENT" -u root -Nse "SELECT 1" >/dev/null 2>&1; then
-        ADMIN_USER="root"
-        ADMIN_PASSWORD=""
-        AUTH_MODE="socket"
-        echo -e "${GREEN}Administrator access verified (local authentication).${RESET}"
-        return 0
-    fi
-
-    read -rp "Database administrator username [root]: " ADMIN_USER
-    ADMIN_USER="${ADMIN_USER:-root}"
-
-    if [[ ! "$ADMIN_USER" =~ ^[a-zA-Z0-9_.@-]{1,80}$ ]]; then
-        echo -e "${RED}Invalid administrator username.${RESET}"
-        return 1
-    fi
-
-    read -rsp "Database administrator password: " ADMIN_PASSWORD
-    echo
-
-    AUTH_MODE="password"
-
-    if db_query -e "SELECT 1" >/dev/null 2>&1; then
-        echo -e "${GREEN}Administrator access verified.${RESET}"
-        return 0
-    fi
-
-    ADMIN_PASSWORD=""
-    echo -e "${RED}Could not authenticate to the database server.${RESET}"
-    echo -e "${YELLOW}Check the username, password and server status.${RESET}"
-    return 1
+find_client() {
+  if command -v mariadb >/dev/null 2>&1; then DB_CLIENT="$(command -v mariadb)"
+  elif command -v mysql >/dev/null 2>&1; then DB_CLIENT="$(command -v mysql)"
+  else DB_CLIENT=""; fi
+  [[ -n "$DB_CLIENT" ]]
 }
 
 install_mariadb() {
-    if [[ $EUID -ne 0 ]]; then
-        echo -e "${RED}Run this installer as root.${RESET}"
-        return 1
-    fi
+  [[ $EUID -eq 0 ]] || { fail "Run as root: sudo bash database.sh"; return 1; }
+  echo -e "${YELLOW}MySQL/MariaDB client is missing.${RESET}"
+  read -rp "Install MariaDB server and client now? [y/N]: " answer
+  case "$answer" in y|Y|yes|YES|Yes) ;; *) echo "Installation cancelled."; return 1 ;; esac
 
-    if detect_database; then
-        echo -e "${GREEN}Database client already exists: ${DB_CLIENT}${RESET}"
-        return 0
-    fi
+  if command -v apt-get >/dev/null 2>&1; then
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update || { fail "Package list update failed."; return 1; }
+    apt-get install -y mariadb-server mariadb-client || { fail "MariaDB installation failed."; return 1; }
+  elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y mariadb-server mariadb || { fail "MariaDB installation failed."; return 1; }
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y mariadb-server mariadb || { fail "MariaDB installation failed."; return 1; }
+  else
+    fail "Unsupported package manager. Install MariaDB server/client manually."; return 1
+  fi
 
-    echo -e "${YELLOW}MySQL/MariaDB client is missing.${RESET}"
-    echo "This will install the MariaDB server and client packages."
-    read -rp "Install MariaDB now? [y/N]: " confirm
-    case "$confirm" in
-        y|Y|yes|YES|Yes) ;;
-        *)
-            echo -e "${YELLOW}Installation cancelled. No changes made.${RESET}"
-            return 1
-            ;;
-    esac
-
-    if command -v apt-get >/dev/null 2>&1; then
-        export DEBIAN_FRONTEND=noninteractive
-        apt-get update || return 1
-        apt-get install -y mariadb-server mariadb-client || return 1
-    elif command -v dnf >/dev/null 2>&1; then
-        dnf install -y mariadb-server mariadb || return 1
-    elif command -v yum >/dev/null 2>&1; then
-        yum install -y mariadb-server mariadb || return 1
-    else
-        echo -e "${RED}Unsupported package manager.${RESET}"
-        echo "Supported systems: Ubuntu/Debian, Fedora/RHEL, and compatible dnf/yum systems."
-        echo "Install MariaDB server/client with your OS package manager, then retry."
-        return 1
-    fi
-
-    if command -v systemctl >/dev/null 2>&1; then
-        if systemctl enable --now mariadb 2>/dev/null; then
-            :
-        elif systemctl enable --now mysql 2>/dev/null; then
-            :
-        else
-            echo -e "${RED}Packages installed, but the database service could not be started.${RESET}"
-            echo "Check: systemctl status mariadb --no-pager"
-            return 1
-        fi
-    else
-        echo -e "${YELLOW}Packages installed, but systemd is unavailable; start MariaDB using your OS service manager.${RESET}"
-    fi
-
-    if ! detect_database; then
-        echo -e "${RED}Installation finished, but no database client was detected. Not marking success.${RESET}"
-        return 1
-    fi
-
-    echo -e "${GREEN}${BOLD}MariaDB client detected: ${DB_CLIENT}${RESET}"
-    "$DB_CLIENT" --version || return 1
-    return 0
+  find_client || { fail "Packages ran, but no mysql/mariadb client was found."; return 1; }
+  echo -e "${GREEN}Client installed: ${DB_CLIENT}${RESET}"
 }
 
-prepare_database() {
-    if [[ $EUID -ne 0 ]]; then
-        echo -e "${RED}Please run as root: sudo bash database.sh${RESET}"
-        return 1
-    fi
-
-    if ! detect_database; then
-        install_mariadb || return 1
-        detect_database || {
-            echo -e "${RED}Database client is still unavailable after installation.${RESET}"
-            return 1
-        }
-    fi
-
-    echo -e "${GREEN}Detected client: ${DB_CLIENT}${RESET}"
-    echo -e "${GRAY}Type: ${DB_TYPE}${RESET}"
-
-    if ! detect_server_service >/dev/null; then
-        echo -e "${YELLOW}No active database service detected.${RESET}"
-        echo "Checking whether the server is reachable..."
-
-        if ! "$DB_CLIENT" -u root -Nse "SELECT 1" >/dev/null 2>&1; then
-            echo -e "${RED}Database server is not reachable with local root authentication.${RESET}"
-            echo "Start your existing MySQL/MariaDB service, then retry."
-            return 1
-        fi
-    fi
-
-    connect_admin || return 1
-}
-
-create_database_user() {
-    local db_name db_user db_password
-    local db_host host_sql user_sql password_sql db_sql
-    local sql
-
-    echo
-    line
-    echo -e "${CYAN}${BOLD}CREATE DATABASE AND USER${RESET}"
-    line
-
-    read -rp "New database name: " db_name
-    if ! valid_identifier "$db_name"; then
-        echo -e "${RED}Invalid database name. Use letters, numbers and underscores.${RESET}"
-        return 1
-    fi
-
-    read -rp "New database username: " db_user
-    if ! valid_identifier "$db_user"; then
-        echo -e "${RED}Invalid username. Use letters, numbers and underscores.${RESET}"
-        return 1
-    fi
-
-    read -rsp "Password for ${db_user}: " db_password
-    echo
-
-    if [[ ${#db_password} -lt 12 ]]; then
-        echo -e "${RED}Use a password of at least 12 characters.${RESET}"
-        db_password=""
-        return 1
-    fi
-
-    echo
-    echo -e "${YELLOW}Remote connection access is disabled by default.${RESET}"
-    echo "For remote access, enter a trusted client IP address."
-    echo "Leave empty to allow local connections only."
-    read -rp "Trusted client IP (optional): " db_host
-
-    if [[ -n "$db_host" ]]; then
-        if [[ ! "$db_host" =~ ^[0-9a-fA-F:.]+$ ]] ||
-           [[ "$db_host" == *".."* ]]; then
-            echo -e "${RED}Invalid IP address format. Remote access cancelled.${RESET}"
-            db_password=""
-            return 1
-        fi
-    else
-        db_host="localhost"
-    fi
-
-    db_sql="$(sql_escape "$db_name")"
-    user_sql="$(sql_escape "$db_user")"
-    password_sql="$(sql_escape "$db_password")"
-    host_sql="$(sql_escape "$db_host")"
-
-    echo
-    echo -e "${CYAN}Creating database and granting permissions...${RESET}"
-
-    sql="
-CREATE DATABASE IF NOT EXISTS \`${db_sql}\`;
-CREATE USER IF NOT EXISTS '${user_sql}'@'localhost' IDENTIFIED BY '${password_sql}';
-ALTER USER '${user_sql}'@'localhost' IDENTIFIED BY '${password_sql}';
-GRANT ALL PRIVILEGES ON \`${db_sql}\`.* TO '${user_sql}'@'localhost';
-"
-
-    if [[ "$db_host" != "localhost" ]]; then
-        sql+="
-CREATE USER IF NOT EXISTS '${user_sql}'@'${host_sql}' IDENTIFIED BY '${password_sql}';
-ALTER USER '${user_sql}'@'${host_sql}' IDENTIFIED BY '${password_sql}';
-GRANT ALL PRIVILEGES ON \`${db_sql}\`.* TO '${user_sql}'@'${host_sql}';
-"
-    fi
-
-    if ! printf '%s\n' "$sql" | db_query; then
-        echo -e "${RED}Database operation failed. No success message will be shown.${RESET}"
-        db_password=""
-        sql=""
-        return 1
-    fi
-
-    # Verify that the database exists and the account has its grant.
-    if ! db_query -e "SHOW DATABASES LIKE '${db_sql}'" 2>/dev/null |
-        grep -Fxq "$db_name"; then
-        echo -e "${RED}Verification failed: database was not found.${RESET}"
-        db_password=""
-        sql=""
-        return 1
-    fi
-
-    if ! db_query -e "SHOW GRANTS FOR '${user_sql}'@'localhost'" >/dev/null 2>&1; then
-        echo -e "${RED}Verification failed: user or grants were not found.${RESET}"
-        db_password=""
-        sql=""
-        return 1
-    fi
-
-    echo
-    echo -e "${GREEN}${BOLD}DATABASE SETUP VERIFIED${RESET}"
-    echo -e "${WHITE}Database : ${db_name}${RESET}"
-    echo -e "${WHITE}Username : ${db_user}${RESET}"
-    echo -e "${WHITE}Host     : localhost${RESET}"
-
-    if [[ "$db_host" != "localhost" ]]; then
-        echo -e "${WHITE}Remote host: ${db_host}${RESET}"
-        echo -e "${YELLOW}Ensure the server bind address and firewall allow only trusted clients.${RESET}"
-    fi
-
-    echo -e "${GREEN}Database exists and the user grants were verified.${RESET}"
-
-    db_password=""
-    password_sql=""
-    sql=""
-    unset MYSQL_PWD
-}
-
-database_status() {
-    echo
-    line
-    echo -e "${CYAN}${BOLD}DATABASE STATUS${RESET}"
-    line
-
-    if ! detect_database; then
-        echo -e "${RED}No MySQL/MariaDB client found.${RESET}"
-        return 1
-    fi
-
-    echo -e "${GREEN}Client: ${DB_CLIENT}${RESET}"
-
-    local service
-    if service="$(detect_server_service)"; then
-        echo -e "${GREEN}Active service: ${service}${RESET}"
-    else
-        echo -e "${YELLOW}No active database service detected by systemd.${RESET}"
-    fi
-
-    if "$DB_CLIENT" -u root -Nse "SELECT VERSION()" 2>/dev/null; then
-        echo -e "${GREEN}Local root connection verified.${RESET}"
-    else
-        echo -e "${YELLOW}Could not verify local root authentication.${RESET}"
-        echo "Use Create Database / User to try administrator authentication."
-    fi
-}
-
-main() {
-    local choice
-
-    while true; do
-        header
-
-        echo -e "${CYAN}  [1]${WHITE} Detect Database Installation"
-        echo -e "${GREEN}  [2]${WHITE} Create Database & User"
-        echo -e "${ORANGE}  [3]${WHITE} Check Database Status"
-        echo -e "${YELLOW}  [4]${WHITE} Install MariaDB Server + Client"
-        echo -e "${RED}  [0]${WHITE} Exit"
-        line
-
-        read -rp "$(echo -e "${PURPLE}PRITAM ${CYAN}» ${RESET}")" choice
-
-        case "$choice" in
-            1)
-                prepare_database
-                pause
-                ;;
-            2)
-                if prepare_database; then
-                    create_database_user
-                fi
-                pause
-                ;;
-            3)
-                database_status
-                pause
-                ;;
-            4)
-                install_mariadb
-                pause
-                ;;
-            0)
-                echo -e "${GREEN}Exiting PRITAM Database Manager.${RESET}"
-                exit 0
-                ;;
-            *)
-                echo -e "${RED}Invalid option. Choose 0-4.${RESET}"
-                sleep 1
-                ;;
-        esac
+detect_service() {
+  if command -v systemctl >/dev/null 2>&1; then
+    for svc in mariadb mysql mysqld; do
+      if systemctl cat "$svc" >/dev/null 2>&1; then DB_SERVICE="$svc"; return 0; fi
     done
+  fi
+  DB_SERVICE=""
+  return 1
 }
 
-main
+start_database() {
+  detect_service || { fail "Cannot find a systemd MySQL/MariaDB service."; return 1; }
+  if ! systemctl is-active --quiet "$DB_SERVICE"; then
+    echo -e "${CYAN}Starting ${DB_SERVICE} service...${RESET}"
+    systemctl enable --now "$DB_SERVICE" || { fail "Could not start ${DB_SERVICE}. Check systemctl status ${DB_SERVICE}."; return 1; }
+  fi
+  systemctl is-active --quiet "$DB_SERVICE" || { fail "Database service is not active."; return 1; }
+  echo -e "${GREEN}Service active: ${DB_SERVICE}${RESET}"
+}
+
+sql_escape() {
+  local v="$1"
+  v="${v//\\/\\\\}"
+  v="${v//\'/\'\'}"
+  printf '%s' "$v"
+}
+
+valid_identifier() { [[ "$1" =~ ^[a-zA-Z_][a-zA-Z0-9_]{0,63}$ ]]; }
+
+db_query() {
+  if [[ "$AUTH_MODE" == "socket" ]]; then
+    "$DB_CLIENT" -u "$ADMIN_USER" --batch --skip-column-names "$@"
+  else
+    MYSQL_PWD="$ADMIN_PASSWORD" "$DB_CLIENT" -u "$ADMIN_USER" --batch --skip-column-names "$@"
+  fi
+}
+
+connect_admin() {
+  echo -e "${CYAN}Checking database administrator access...${RESET}"
+  if [[ $EUID -eq 0 ]] && "$DB_CLIENT" -u root -Nse 'SELECT 1' >/dev/null 2>&1; then
+    ADMIN_USER=root; ADMIN_PASSWORD=""; AUTH_MODE=socket
+    echo -e "${GREEN}Local administrator authentication verified.${RESET}"
+    return 0
+  fi
+
+  read -rp "Database administrator username [root]: " ADMIN_USER
+  ADMIN_USER="${ADMIN_USER:-root}"
+  read -rsp "Database administrator password: " ADMIN_PASSWORD; echo
+  AUTH_MODE=password
+  if db_query -e 'SELECT 1' >/dev/null 2>&1; then
+    echo -e "${GREEN}Administrator authentication verified.${RESET}"; return 0
+  fi
+  ADMIN_PASSWORD=""
+  fail "Database administrator login failed. No user/database was created."
+  return 1
+}
+
+setup_database() {
+  local db_user db_name DB_PASSWORD db_user_sql db_name_sql pass_sql
+  local remote_ip remote_sql sql conf_file conf_dir
+
+  [[ $EUID -eq 0 ]] || { fail "Run this script as root."; return 1; }
+  header
+  echo -e "${CYAN}${BOLD}Running: MySQL / MariaDB Database Setup${RESET}"
+  line
+
+  if ! find_client; then
+    install_mariadb || return 1
+    find_client || { fail "Database client is still missing. Stopping."; return 1; }
+  fi
+  echo -e "${GREEN}Detected client: ${DB_CLIENT}${RESET}"
+
+  start_database || return 1
+  "$DB_CLIENT" --version || { fail "Client version check failed."; return 1; }
+  connect_admin || return 1
+
+  echo
+  read -rp "Enter new database username: " db_user
+  valid_identifier "$db_user" || { fail "Invalid username. Use letters, numbers and underscores; first character must be a letter or underscore."; return 1; }
+  read -rp "Database name [${db_user}]: " db_name
+  db_name="${db_name:-$db_user}"
+  valid_identifier "$db_name" || { fail "Invalid database name."; return 1; }
+  read -rsp "Enter password for ${db_user} (minimum 12 characters): " DB_PASSWORD; echo
+  [[ ${#DB_PASSWORD} -ge 12 ]] || { DB_PASSWORD=""; fail "Password must contain at least 12 characters."; return 1; }
+
+  echo
+  echo -e "${YELLOW}Remote access is optional and restricted to one trusted IP.${RESET}"
+  read -rp "Trusted remote client IP (blank = local-only): " remote_ip
+  if [[ -n "$remote_ip" ]]; then
+    if ! python3 - "$remote_ip" <<'PY' >/dev/null 2>&1
+import ipaddress, sys
+ipaddress.ip_address(sys.argv[1])
+PY
+    then DB_PASSWORD=""; fail "Invalid IPv4/IPv6 address. Remote access not configured."; return 1; fi
+  fi
+
+  db_user_sql="$(sql_escape "$db_user")"
+  db_name_sql="$(sql_escape "$db_name")"
+  pass_sql="$(sql_escape "$DB_PASSWORD")"
+  sql="CREATE DATABASE IF NOT EXISTS \`${db_name_sql}\`;
+CREATE USER IF NOT EXISTS '${db_user_sql}'@'localhost' IDENTIFIED BY '${pass_sql}';
+ALTER USER '${db_user_sql}'@'localhost' IDENTIFIED BY '${pass_sql}';
+GRANT ALL PRIVILEGES ON \`${db_name_sql}\`.* TO '${db_user_sql}'@'localhost';"
+  if [[ -n "$remote_ip" ]]; then
+    remote_sql="$(sql_escape "$remote_ip")"
+    sql+="
+CREATE USER IF NOT EXISTS '${db_user_sql}'@'${remote_sql}' IDENTIFIED BY '${pass_sql}';
+ALTER USER '${db_user_sql}'@'${remote_sql}' IDENTIFIED BY '${pass_sql}';
+GRANT ALL PRIVILEGES ON \`${db_name_sql}\`.* TO '${db_user_sql}'@'${remote_sql}';"
+  fi
+
+  echo -e "${CYAN}Creating database and user...${RESET}"
+  if ! printf '%s\n' "$sql" | db_query; then
+    DB_PASSWORD=""; sql=""; fail "MySQL/MariaDB rejected the setup. No success message will be shown."; return 1
+  fi
+
+  if ! db_query -e "SHOW DATABASES LIKE '${db_name_sql}'" 2>/dev/null | grep -Fxq "$db_name"; then
+    DB_PASSWORD=""; sql=""; fail "Verification failed: database does not exist."; return 1
+  fi
+  if ! db_query -e "SHOW GRANTS FOR '${db_user_sql}'@'localhost'" >/dev/null 2>&1; then
+    DB_PASSWORD=""; sql=""; fail "Verification failed: user grants were not found."; return 1
+  fi
+  if [[ -n "$remote_ip" ]] && ! db_query -e "SHOW GRANTS FOR '${db_user_sql}'@'${remote_sql}'" >/dev/null 2>&1; then
+    DB_PASSWORD=""; sql=""; fail "Local database was created, but remote grant verification failed."; return 1
+  fi
+
+  # Remote bind configuration is only changed when a trusted IP was explicitly supplied.
+  if [[ -n "$remote_ip" ]]; then
+    if [[ -d /etc/mysql/mariadb.conf.d ]]; then
+      conf_dir=/etc/mysql/mariadb.conf.d; conf_file="$conf_dir/99-pritam-remote.cnf"
+    elif [[ -d /etc/my.cnf.d ]]; then
+      conf_dir=/etc/my.cnf.d; conf_file="$conf_dir/99-pritam-remote.cnf"
+    elif [[ -d /etc/mysql/conf.d ]]; then
+      conf_dir=/etc/mysql/conf.d; conf_file="$conf_dir/99-pritam-remote.cnf"
+    else
+      echo -e "${YELLOW}Could not locate a standard MariaDB config directory; remote network access may need manual configuration.${RESET}"
+      conf_file=""
+    fi
+
+    if [[ -n "$conf_file" ]]; then
+      if [[ ! -e "$conf_file" ]]; then
+        printf '[mysqld]\nbind-address = 0.0.0.0\n' > "$conf_file" || { fail "Could not write remote config."; return 1; }
+      else
+        echo -e "${YELLOW}Existing remote config left unchanged: ${conf_file}${RESET}"
+      fi
+      if ! systemctl restart "$DB_SERVICE"; then
+        fail "Database restart failed after remote config change. Check service logs before continuing."; return 1
+      fi
+      systemctl is-active --quiet "$DB_SERVICE" || { fail "Database service is not active after restart."; return 1; }
+      if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -qi 'Status: active'; then
+        ufw allow from "$remote_ip" to any port 3306 proto tcp || { fail "Could not add UFW rule for trusted IP."; return 1; }
+        echo -e "${GREEN}UFW rule added for ${remote_ip} only.${RESET}"
+      else
+        echo -e "${YELLOW}UFW is not active; configure your VPS/cloud firewall to allow TCP 3306 from ${remote_ip} only.${RESET}"
+      fi
+    fi
+  fi
+
+  # Final connection + grants verification after optional restart.
+  if ! db_query -e "SHOW DATABASES LIKE '${db_name_sql}'" 2>/dev/null | grep -Fxq "$db_name"; then
+    DB_PASSWORD=""; sql=""; fail "Final verification failed. Setup is not reported as successful."; return 1
+  fi
+
+  echo
+  echo -e "${GREEN}${BOLD}✓ DATABASE SETUP VERIFIED${RESET}"
+  echo -e "${WHITE}Database : ${db_name}${RESET}"
+  echo -e "${WHITE}Username : ${db_user}${RESET}"
+  echo -e "${WHITE}Host     : localhost${RESET}"
+  if [[ -n "$remote_ip" ]]; then
+    echo -e "${WHITE}Remote IP: ${remote_ip}${RESET}"
+    echo -e "${YELLOW}Only connect remotely from the trusted IP; ensure your cloud firewall also restricts port 3306.${RESET}"
+  else
+    echo -e "${WHITE}Remote   : Disabled (local-only)${RESET}"
+  fi
+  echo -e "${GREEN}Database and grants were verified successfully.${RESET}"
+  DB_PASSWORD=""; ADMIN_PASSWORD=""; sql=""; unset MYSQL_PWD
+  return 0
+}
+
+if ! setup_database; then
+  echo
+  echo -e "${RED}${BOLD}✖ DATABASE SETUP FAILED${RESET}"
+  echo -e "${YELLOW}Check the error above. Success was not reported.${RESET}"
+  finish
+  exit 1
+fi
+finish
