@@ -141,8 +141,15 @@ setup_database() {
   read -rp "Database name [${db_user}]: " db_name
   db_name="${db_name:-$db_user}"
   valid_identifier "$db_name" || { fail "Invalid database name."; return 1; }
-  read -rsp "Enter password for ${db_user} (minimum 12 characters): " DB_PASSWORD; echo
-  [[ ${#DB_PASSWORD} -ge 12 ]] || { DB_PASSWORD=""; fail "Password must contain at least 12 characters."; return 1; }
+  while true; do
+    read -rsp "Enter password for ${db_user} (minimum 12 characters): " DB_PASSWORD || { DB_PASSWORD=""; fail "Password input cancelled."; return 1; }
+    echo
+    if [[ ${#DB_PASSWORD} -ge 12 ]]; then
+      break
+    fi
+    DB_PASSWORD=""
+    echo -e "${RED}✖ Password must contain at least 12 characters. Please try again.${RESET}"
+  done
 
   echo
   echo -e "${YELLOW}Remote access is optional and restricted to one trusted IP.${RESET}"
