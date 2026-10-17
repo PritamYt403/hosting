@@ -25,7 +25,7 @@ NC='\033[0m'
 PANEL_DIR="/var/www/pterodactyl"
 GITHUB_REPO="pterodactyl/panel"
 
-INSTALL_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/Panel/main/pterodactyl/install.sh"
+INSTALL_URL="https://raw.githubusercontent.com/PritamYt403/pterodactyl/main/pterodactary.sh"
 SSL_URL="https://raw.githubusercontent.com/nobita329/Nobita-Cloud/refs/heads/main/panel/pterodactyl/ssl.sh"
 PHPMYADMIN_URL="https://raw.githubusercontent.com/nobita329/Nobita-Cloud/refs/heads/main/panel/pterodactyl/phpMyAdmin.sh"
 
