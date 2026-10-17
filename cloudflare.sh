@@ -316,3 +316,4 @@ while true; do
         *) echo -e "${RED}Invalid option.${RESET}"; sleep 1 ;;
     esac
 done
+
