@@ -44,26 +44,46 @@ demo() {
     echo "No system changes were made."
     pause
 }
-
 panel_menu() {
     while true; do
         header
-        echo "────────── PANEL MENU ──────────"
-        echo "1) Install Panel"
-        echo "2) Start Panel"
-        echo "3) Stop Panel"
-        echo "4) Panel Status"
-        echo "5) Back"
         echo "────────────────────────────────"
-        read -rp "Select: " choice
+        echo -e "${CYAN}       PRITAM PANEL MENU${RESET}"
+        echo "────────────────────────────────"
+        echo "1) Panel Installation"
+        echo "2) Wings Installation"
+        echo "3) Uninstall Tools"
+        echo "4) Blueprint+Theme+Extensions"
+        echo "5) Cloudflare Setup"
+        echo "6) System Information"
+        echo "7) Tailscale (install + up)"
+        echo "8) Database Setup"
+        echo "9) Exit"
+        echo "────────────────────────────────"
+        read -rp "Select an option [1-9]: " choice
 
         case "$choice" in
             1) demo ;;
             2) demo ;;
             3) demo ;;
             4) demo ;;
-            5) break ;;
-            *) echo -e "${RED}Invalid option!${RESET}"; sleep 1 ;;
+            5) demo ;;
+            6)
+                header
+                uname -a
+                echo
+                df -h
+                echo
+                free -h 2>/dev/null || true
+                pause
+                ;;
+            7) demo ;;
+            8) demo ;;
+            9) break ;;
+            *)
+                echo -e "${RED}Invalid option!${RESET}"
+                sleep 1
+                ;;
         esac
     done
 }
