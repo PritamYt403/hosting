@@ -1,6 +1,14 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# --- SEMA NEON THEME ---
+# ══════════════════════════════════════════════════════════════
+#                 PRITAM PTERODACTYL INSTALLER
+#                    Professional Edition
+# ══════════════════════════════════════════════════════════════
+
+set -Eeuo pipefail
+umask 077
+
+# ── Neon Theme ────────────────────────────────────────────────
 CYAN='\033[38;5;51m'
 PURPLE='\033[38;5;141m'
 GRAY='\033[38;5;242m'
@@ -9,273 +17,446 @@ GREEN='\033[38;5;82m'
 RED='\033[38;5;196m'
 GOLD='\033[38;5;214m'
 NC='\033[0m'
-HEADER_LINE="${GRAY}────────────────────────────────────────────────────────────${NC}"
-GITHUB_REPO="pterodactyl/panel"
+
+REPO="pterodactyl/panel"
 PHP_VERSION="8.3"
+PANEL_DIR="/var/www/pterodactyl"
+DB_NAME="panel"
+DB_USER="pterodactyl"
 
-# --- UI HELPERS ---
-show_banner() {
-    clear
-    echo -e "${CYAN}"
-    cat << "EOF"
-               .                                      .o8                          .               oooo  
-             .o8                                     "888                        .o8               `888  
-oo.ooooo.  .o888oo  .ooooo.  oooo d8b  .ooooo.   .oooo888   .oooo.    .ooooo.  .o888oo oooo    ooo  888  
- 888' `88b   888   d88' `88b `888""8P d88' `88b d88' `888  `P  )88b  d88' `"Y8   888    `88.  .8'   888  
- 888   888   888   888ooo888  888     888   888 888   888   .oP"888  888         888     `88..8'    888  
- 888   888   888 . 888    .o  888     888   888 888   888  d8(  888  888   .o8   888 .    `888'     888  
- 888bod8P'   "888" `Y8bod8P' d888b    `Y8bod8P' `Y8bod88P" `Y888""8o `Y8bod8P'   "888"     .8'     o888o 
- 888                                                                                   .o..P'            
-o888o                                                                                  `Y8P'             
-                                                                                                         
-EOF
-    echo -e "           ${WHITE}PREMIUM PTERODACTYL INSTALLER${NC}"
-    echo -e "${HEADER_LINE}"
-}
-
-ok() {
-    echo -e "  ${GREEN}[OK]${NC} $1"
+# ── UI Helpers ────────────────────────────────────────────────
+line() {
+    echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
 step() {
-    echo -e "\n  ${PURPLE}::${NC} ${WHITE}$1${NC}"
+    echo
+    echo -e "${PURPLE}➜ ${WHITE}$*${NC}"
 }
 
-# --- INPUT FUNCTION ---
-ask() {
-    local label=$1
-    local default=$2
-    local var_name=$3
-    echo -ne "  ${PURPLE}•${NC} ${WHITE}$label${NC} ${GRAY}[$default]${NC}\n  ${GRAY}╰─>${NC} "
-    read input
-    if [ -z "$input" ]; then
-        eval "$var_name=\"$default\""
-    else
-        eval "$var_name=\"$input\""
-    fi
+ok() {
+    echo -e "${GREEN}✔ $*${NC}"
 }
 
-# --- TIMEOUT INPUT (10s auto-default) ---
-ask_timeout() {
-    local label=$1
-    local default=$2
-    local var_name=$3
-    echo -ne "  ${PURPLE}•${NC} ${WHITE}$label${NC} ${GRAY}[$default]${NC}\n  ${GRAY}╰─>${NC} "
-    if ! read -t 10 input; then
-        echo -e "\n  ${GOLD}⌛ Timeout — using default: ${WHITE}$default${NC}"
-        eval "$var_name=\"$default\""
-        return
-    fi
-    if [ -z "$input" ]; then
-        eval "$var_name=\"$default\""
-    else
-        eval "$var_name=\"$input\""
-    fi
+warn() {
+    echo -e "${GOLD}⚠ $*${NC}"
 }
 
-# --- FETCH GITHUB VERSIONS ---
-fetch_github_versions() {
-    local repo=$1
-    echo -e "  ${GRAY}Fetching releases from ${WHITE}$repo${GRAY}...${NC}" >&2
-    local json
-    json=$(curl -sf "https://api.github.com/repos/$repo/releases?per_page=20" 2>/dev/null) || {
-        echo -e "  ${RED}Failed to fetch releases.${NC}" >&2
-        return 1
-    }
-    echo "$json" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-for r in data:
-    if r.get('prerelease', False):
-        continue
-    tag = r.get('tag_name', '')
-    if tag.startswith('v'):
-        print(tag)
-" 2>/dev/null || return 1
+die() {
+    echo -e "${RED}✖ $*${NC}" >&2
+    exit 1
 }
 
-# --- VERSION SELECTOR (10s timeout) ---
-select_version() {
-    local repo=$1
-    local var_name=$2
-    local default="latest"
-    echo -e "\n  ${PURPLE}::${NC} ${WHITE}Available Panel Versions${NC}"
-    local tags=() disp=() i=0
-    while IFS= read -r tag; do
-        [[ -z "$tag" ]] && continue
-        tags+=("$tag")
-        i=$((i+1))
-        disp+=("  ${GRAY}$i.${NC} ${WHITE}$tag${NC}")
-    done < <(fetch_github_versions "$repo" 2>/dev/null) || true
-
-    if [[ ${#tags[@]} -eq 0 ]]; then
-        echo -e "  ${YELLOW}No versions found. Using latest.${NC}"
-        eval "$var_name=\"$default\""
-        return
-    fi
-
-    printf '%b\n' "${disp[@]}"
-    local max=${#tags[@]}
-    echo -ne "\n  ${PURPLE}•${NC} ${WHITE}Select version [1-$max]${NC} ${GRAY}[1 = latest]${NC}\n  ${GRAY}╰─>${NC} "
-    if ! read -t 10 choice; then
-        echo -e "\n  ${GOLD}⌛ Timeout — using latest: ${WHITE}${tags[0]}${NC}"
-        eval "$var_name=\"${tags[0]}\""
-        return
-    fi
-    if [[ -z "$choice" || "$choice" == "1" ]]; then
-        echo -e "  ${GREEN}→ ${WHITE}${tags[0]}${NC}"
-        eval "$var_name=\"${tags[0]}\""
-    elif [[ "$choice" =~ ^[0-9]+$ ]] && [[ $choice -ge 1 ]] && [[ $choice -le $max ]]; then
-        local idx=$((choice - 1))
-        echo -e "  ${GREEN}→ ${WHITE}${tags[$idx]}${NC}"
-        eval "$var_name=\"${tags[$idx]}\""
-    else
-        echo -e "  ${GREEN}→ ${WHITE}${tags[0]}${NC} (invalid input)"
-        eval "$var_name=\"${tags[0]}\""
-    fi
+pause() {
+    echo
+    read -rp "Press Enter to continue..." _ || true
 }
 
-# --- START ---
-show_banner
+show_banner() {
+    clear 2>/dev/null || true
+    echo -e "${CYAN}"
+    cat <<'EOF'
+██████╗ ██████╗ ██╗████████╗ █████╗ ███╗   ███╗
+██╔══██╗██╔══██╗██║╚══██╔══╝██╔══██╗████╗ ████║
+██████╔╝██████╔╝██║   ██║   ███████║██╔████╔██║
+██╔═══╝ ██╔══██╗██║   ██║   ██╔══██║██║╚██╔╝██║
+██║     ██║  ██║██║   ██║   ██║  ██║██║ ╚═╝ ██║
+╚═╝     ╚═╝  ╚═╝╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝
+EOF
+    echo -e "${NC}"
+    echo -e "             ${WHITE}PRITAM PTERODACTYL INSTALLER${NC}"
+    echo -e "              ${PURPLE}Professional Edition${NC}"
+    line
+    echo
+}
 
-# --- DATA COLLECTION ---
-ask "Panel Domain" "panel.nobita.indevs.in" DOMAIN
-ask "Admin Email" "admin@gmail.com" EMAIL
-ask "Admin Username" "admin" USERNAME
-ask_timeout "Admin Password" "admin" PASSWORD
-select_version "$GITHUB_REPO" "version_PANEL"
+# ── Input Validation ──────────────────────────────────────────
+ask_value() {
+    local prompt="$1"
+    local default="$2"
+    local result
 
-# --- FINAL VALIDATION LOOP ---
-echo -e "\n  ${GOLD}┌─[ REVIEW CONFIGURATION ]${NC}"
-echo -e "  ${GOLD}│${NC} ${GRAY}Domain:${NC}   $DOMAIN"
-echo -e "  ${GOLD}│${NC} ${GRAY}Email:${NC}    $EMAIL"
-echo -e "  ${GOLD}│${NC} ${GRAY}User:${NC}     $USERNAME"
-echo -e "  ${GOLD}│${NC} ${GRAY}Version:${NC}  $version_PANEL"
-echo -e "  ${GOLD}└───────────────────────────${NC}"
+    while true; do
+        read -rp "$(echo -e "${CYAN}•${NC} ${WHITE}${prompt}${NC} [${default}]: ")" result || die "Input cancelled."
+        result="${result:-$default}"
 
-while true; do
-    echo -ne "\n  ${CYAN}Start Installation?${NC} ${WHITE}(y/n)${NC}${GRAY}:${NC} "
-    read -n 1 -r CONFIRM
-    echo ""
+        if [[ -n "$result" ]]; then
+            REPLY="$result"
+            return 0
+        fi
+    done
+}
 
-    case $CONFIRM in
-        [Yy]* )
-            echo -e "  ${GREEN}Proceeding to deployment...${NC}"
-            break
-            ;;
-        [Nn]* )
-            echo -e "  ${RED}Installation aborted by user.${NC}"
-            exit
-            ;;
-        * )
-            echo -e "  ${GRAY}Invalid input. Enter ${NC}${WHITE}y${NC}${GRAY} or ${NC}${WHITE}n${NC}${GRAY}.${NC}"
-            ;;
+ask_secret() {
+    local prompt="$1"
+    local result
+
+    while true; do
+        read -rsp "$(echo -e "${CYAN}•${NC} ${WHITE}${prompt}${NC}: ")" result || die "Password input cancelled."
+        echo
+
+        if [[ ${#result} -ge 12 ]]; then
+            REPLY="$result"
+            return 0
+        fi
+
+        warn "Password must contain at least 12 characters. Try again."
+        result=""
+    done
+}
+
+validate_domain() {
+    [[ "$1" =~ ^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$ ]]
+}
+
+validate_email() {
+    [[ "$1" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]
+}
+
+validate_username() {
+    [[ "$1" =~ ^[A-Za-z0-9_]{3,32}$ ]]
+}
+
+# ── System Checks ─────────────────────────────────────────────
+check_system() {
+    [[ $EUID -eq 0 ]] || die "Run this script as root."
+    command -v curl >/dev/null 2>&1 || die "curl is required."
+    command -v python3 >/dev/null 2>&1 || die "python3 is required."
+    command -v openssl >/dev/null 2>&1 || die "openssl is required."
+
+    [[ -r /etc/os-release ]] || die "Cannot detect operating system."
+    # shellcheck disable=SC1091
+    source /etc/os-release
+
+    case "${ID:-}" in
+        ubuntu|debian) ;;
+        *) die "Supported operating systems: Ubuntu or Debian." ;;
     esac
-done
 
-echo -e "${HEADER_LINE}"
+    if [[ -f "${PANEL_DIR}/artisan" ]]; then
+        die "Pterodactyl Panel already exists at ${PANEL_DIR}. Refusing to overwrite it."
+    fi
 
-# --- Dependencies ---
-apt update && apt install -y curl apt-transport-https ca-certificates gnupg unzip git tar sudo lsb-release
+    if [[ -e "${PANEL_DIR}" ]]; then
+        [[ -d "${PANEL_DIR}" ]] || die "${PANEL_DIR} exists and is not a directory."
+        [[ -z "$(find "${PANEL_DIR}" -mindepth 1 -maxdepth 1 -print -quit)" ]] ||
+            die "${PANEL_DIR} is not empty. Back it up and inspect it first."
+    fi
+}
 
-# Detect OS
-OS=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
+# ── Version Selector ──────────────────────────────────────────
+select_version() {
+    step "Fetching official Pterodactyl releases"
 
-if [[ "$OS" == "ubuntu" ]]; then
-    echo "Detected Ubuntu. Adding PPA for PHP..."
-    apt install -y software-properties-common
-    LC_ALL=C.UTF-8 add-apt-repository -y ppa:ondrej/php
-elif [[ "$OS" == "debian" ]]; then
-    echo "Detected Debian. Adding SURY PHP repo..."
-    curl -fsSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /usr/share/keyrings/sury-php.gpg
-    echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/sury-php.list
-fi
+    local json
+    json="$(mktemp)"
+    local choices=()
 
-# Add Redis GPG key and repo
-rm -f /usr/share/keyrings/redis-archive-keyring.gpg
-curl -fsSL https://packages.redis.io/gpg | gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/redis.list
+    if ! curl -fsSL --connect-timeout 10 --max-time 30 \
+        "https://api.github.com/repos/${REPO}/releases?per_page=20" \
+        -o "$json"; then
+        rm -f "$json"
+        die "Could not fetch releases from GitHub."
+    fi
 
-apt update
+    mapfile -t choices < <(
+        python3 -c '
+import json,sys
+try:
+    data=json.load(open(sys.argv[1]))
+    for r in data:
+        tag=r.get("tag_name","")
+        if tag and not r.get("prerelease",False) and not r.get("draft",False):
+            print(tag)
+except Exception:
+    sys.exit(1)
+' "$json"
+    ) || {
+        rm -f "$json"
+        die "Could not parse release information."
+    }
 
-# --- Install PHP + extensions ---
-apt install -y php${PHP_VERSION} php${PHP_VERSION}-{cli,fpm,common,mysql,mbstring,bcmath,xml,zip,curl,gd,tokenizer,ctype,simplexml,dom} mariadb-server nginx redis-server
+    rm -f "$json"
 
-# --- Install Composer ---
-curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+    ((${#choices[@]} > 0)) || die "No stable releases were returned."
 
-# --- Download Pterodactyl Panel ---
-mkdir -p /var/www/pterodactyl
-cd /var/www/pterodactyl
-if [[ "$version_PANEL" == "latest" ]]; then
-    step "Downloading latest panel release..."
-    curl -Lso panel.tar.gz https://github.com/pterodactyl/panel/releases/latest/download/panel.tar.gz
-else
-    step "Downloading panel version $version_PANEL..."
-    curl -Lso panel.tar.gz "https://github.com/pterodactyl/panel/releases/download/${version_PANEL}/panel.tar.gz"
-fi
-tar -xzf panel.tar.gz
-chmod -R 755 storage/* bootstrap/cache/
+    echo
+    local i
+    for i in "${!choices[@]}"; do
+        printf "  %2d) %s\n" "$((i + 1))" "${choices[$i]}"
+    done
 
-# --- MariaDB Setup ---
-DB_NAME=panel
-DB_USER=pterodactyl
-DB_PASS=yourPassword
-mariadb -e "CREATE USER '${DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASS}';" 2>/dev/null || true
-mariadb -e "CREATE DATABASE ${DB_NAME};" 2>/dev/null || true
-mariadb -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'127.0.0.1' WITH GRANT OPTION;"
-mariadb -e "FLUSH PRIVILEGES;"
+    echo
+    echo "  0) Cancel installation"
+    echo
 
-# --- .env Setup ---
-if [ ! -f ".env.example" ]; then
-    curl -Lo .env.example https://raw.githubusercontent.com/pterodactyl/panel/develop/.env.example
-fi
-cp .env.example .env
-sed -i "s|APP_URL=.*|APP_URL=https://${DOMAIN}|g" .env
-sed -i "s|DB_DATABASE=.*|DB_DATABASE=${DB_NAME}|g" .env
-sed -i "s|DB_USERNAME=.*|DB_USERNAME=${DB_USER}|g" .env
-sed -i "s|DB_PASSWORD=.*|DB_PASSWORD=${DB_PASS}|g" .env
-if ! grep -q "^APP_ENVIRONMENT_ONLY=" .env; then
-    echo "APP_ENVIRONMENT_ONLY=false" >> .env
-fi
+    while true; do
+        read -rp "Choose release [1-${#choices[@]}]: " selection || die "Input cancelled."
 
-# --- Install PHP dependencies ---
-COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader
+        if [[ "$selection" == "0" ]]; then
+            exit 0
+        elif [[ "$selection" =~ ^[0-9]+$ ]] &&
+             ((selection >= 1 && selection <= ${#choices[@]})); then
+            VERSION="${choices[$((selection - 1))]}"
+            break
+        fi
 
-# --- Generate Application Key ---
-php artisan key:generate --force
+        warn "Select a listed version."
+    done
 
-# --- Run Migrations ---
-php artisan migrate --seed --force
+    ok "Selected release: ${VERSION}"
+}
 
-# --- Permissions ---
-chown -R www-data:www-data /var/www/pterodactyl/*
-apt install -y cron
-systemctl enable --now cron
-(crontab -l 2>/dev/null; echo "* * * * * php /var/www/pterodactyl/artisan schedule:run >> /dev/null 2>&1") | crontab -
+# ── Configuration ─────────────────────────────────────────────
+collect_config() {
+    echo -e "${CYAN}CONFIGURATION${NC}"
+    line
 
-# --- Nginx Setup ---
-mkdir -p /etc/certs/panel
-openssl req -new -newkey rsa:4096 -days 3650 -nodes -x509 \
-    -subj "/C=NA/ST=NA/L=NA/O=NA/CN=${DOMAIN}" \
-    -keyout /etc/certs/panel/privkey.pem -out /etc/certs/panel/fullchain.pem
+    while true; do
+        ask_value "Panel domain (DNS must point to this VPS)" "panel.example.com"
+        DOMAIN="$REPLY"
+        validate_domain "$DOMAIN" && break
+        warn "Enter a valid domain name."
+    done
 
-tee /etc/nginx/sites-available/pterodactyl.conf > /dev/null << EOF
+    while true; do
+        ask_value "Administrator email" "admin@example.com"
+        EMAIL="$REPLY"
+        validate_email "$EMAIL" && break
+        warn "Enter a valid email address."
+    done
+
+    while true; do
+        ask_value "Administrator username" "pritam"
+        USERNAME="$REPLY"
+        validate_username "$USERNAME" && break
+        warn "Use 3-32 letters, numbers, or underscores."
+    done
+
+    ask_secret "Administrator password (12+ characters)"
+    ADMIN_PASSWORD="$REPLY"
+
+    select_version
+
+    echo
+    line
+    echo -e "${WHITE}REVIEW CONFIGURATION${NC}"
+    echo "  Domain   : ${DOMAIN}"
+    echo "  Email    : ${EMAIL}"
+    echo "  Username : ${USERNAME}"
+    echo "  Version  : ${VERSION}"
+    echo "  Password : [hidden]"
+    line
+
+    local confirm
+    read -rp "Start installation? Type YES: " confirm || die "Input cancelled."
+    [[ "$confirm" == "YES" ]] || die "Installation cancelled."
+}
+
+# ── Dependencies ──────────────────────────────────────────────
+install_dependencies() {
+    step "Installing system dependencies"
+
+    export DEBIAN_FRONTEND=noninteractive
+
+    apt-get update
+    apt-get install -y \
+        ca-certificates curl gnupg unzip git tar sudo \
+        lsb-release openssl python3 cron mariadb-server \
+        nginx redis-server certbot python3-certbot-nginx \
+        software-properties-common
+
+    if [[ "${ID}" == "ubuntu" ]]; then
+        add-apt-repository -y ppa:ondrej/php
+    else
+        install -d -m 0755 /usr/share/keyrings
+        curl -fsSL https://packages.sury.org/php/apt.gpg |
+            gpg --dearmor --yes -o /usr/share/keyrings/sury-php.gpg
+
+        echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ ${VERSION_CODENAME} main" \
+            > /etc/apt/sources.list.d/sury-php.list
+    fi
+
+    apt-get update
+
+    apt-get install -y \
+        "php${PHP_VERSION}" \
+        "php${PHP_VERSION}-cli" \
+        "php${PHP_VERSION}-fpm" \
+        "php${PHP_VERSION}-common" \
+        "php${PHP_VERSION}-mysql" \
+        "php${PHP_VERSION}-mbstring" \
+        "php${PHP_VERSION}-bcmath" \
+        "php${PHP_VERSION}-xml" \
+        "php${PHP_VERSION}-zip" \
+        "php${PHP_VERSION}-curl" \
+        "php${PHP_VERSION}-gd" \
+        "php${PHP_VERSION}-intl" \
+        "php${PHP_VERSION}-redis"
+
+    systemctl enable --now mariadb nginx redis-server "php${PHP_VERSION}-fpm" cron
+
+    ok "Dependencies installed"
+}
+
+# ── Composer ───────────────────────────────────────────────────
+install_composer() {
+    step "Installing Composer"
+
+    if command -v composer >/dev/null 2>&1; then
+        ok "Composer already installed"
+        return
+    fi
+
+    local installer expected actual
+    installer="$(mktemp)"
+    expected="$(mktemp)"
+
+    curl -fsSL https://composer.github.io/installer.sig -o "$expected"
+    curl -fsSL https://getcomposer.org/installer -o "$installer"
+
+    actual="$(php -r "echo hash_file('sha384', '$installer');")"
+    local wanted
+    wanted="$(cat "$expected")"
+
+    if [[ "$actual" != "$wanted" ]]; then
+        rm -f "$installer" "$expected"
+        die "Composer installer checksum verification failed."
+    fi
+
+    php "$installer" --install-dir=/usr/local/bin --filename=composer
+    rm -f "$installer" "$expected"
+
+    ok "Composer installed"
+}
+
+# ── Database Setup ────────────────────────────────────────────
+setup_database() {
+    step "Configuring local MariaDB"
+
+    DB_PASS="$(openssl rand -hex 24)"
+
+    mariadb -e "CREATE DATABASE \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    mariadb -e "CREATE USER '${DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASS}';"
+    mariadb -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'127.0.0.1';"
+    mariadb -e "FLUSH PRIVILEGES;"
+
+    ok "Database and restricted local database account created"
+}
+
+# ── Download Panel ─────────────────────────────────────────────
+download_panel() {
+    step "Downloading Pterodactyl ${VERSION}"
+
+    mkdir -p "$PANEL_DIR"
+    cd "$PANEL_DIR"
+
+    local archive
+    archive="$(mktemp)"
+
+    curl -fL --retry 3 \
+        "https://github.com/${REPO}/releases/download/${VERSION}/panel.tar.gz" \
+        -o "$archive"
+
+    tar -tzf "$archive" >/dev/null ||
+        die "Panel archive validation failed."
+
+    tar -xzf "$archive" -C "$PANEL_DIR"
+    rm -f "$archive"
+
+    [[ -f .env.example ]] || die "Downloaded release is missing .env.example."
+
+    cp .env.example .env
+    chmod -R 755 storage bootstrap/cache
+
+    ok "Panel files downloaded"
+}
+
+# ── Environment ────────────────────────────────────────────────
+configure_environment() {
+    step "Configuring Panel environment"
+
+    cd "$PANEL_DIR"
+
+    # Write values using PHP so special characters in passwords
+    # do not break the .env file.
+    export PRITAM_DOMAIN="$DOMAIN"
+    export PRITAM_DB_NAME="$DB_NAME"
+    export PRITAM_DB_USER="$DB_USER"
+    export PRITAM_DB_PASS="$DB_PASS"
+
+    php <<'PHP'
+<?php
+$file = '.env';
+$env = file_get_contents($file);
+
+$values = [
+    'APP_URL' => 'https://' . getenv('PRITAM_DOMAIN'),
+    'APP_ENV' => 'production',
+    'APP_DEBUG' => 'false',
+    'APP_ENVIRONMENT_ONLY' => 'false',
+    'DB_CONNECTION' => 'mysql',
+    'DB_HOST' => '127.0.0.1',
+    'DB_PORT' => '3306',
+    'DB_DATABASE' => getenv('PRITAM_DB_NAME'),
+    'DB_USERNAME' => getenv('PRITAM_DB_USER'),
+    'DB_PASSWORD' => getenv('PRITAM_DB_PASS'),
+];
+
+foreach ($values as $key => $value) {
+    $line = $key . '=' . $value;
+    $pattern = '/^' . preg_quote($key, '/') . '=.*$/m';
+
+    if (preg_match($pattern, $env)) {
+        $env = preg_replace($pattern, $line, $env);
+    } else {
+        $env .= "\n" . $line . "\n";
+    }
+}
+
+file_put_contents($file, $env);
+PHP
+
+    unset PRITAM_DB_PASS DB_PASS
+
+    ok "Environment configured"
+}
+
+# ── Application Setup ──────────────────────────────────────────
+setup_application() {
+    step "Installing PHP dependencies"
+
+    cd "$PANEL_DIR"
+    COMPOSER_ALLOW_SUPERUSER=1 composer install \
+        --no-dev --optimize-autoloader --no-interaction
+
+    php artisan key:generate --force
+    php artisan migrate --seed --force
+
+    chown -R www-data:www-data "$PANEL_DIR"
+    chmod -R 755 storage bootstrap/cache
+
+    # Install the scheduler entry without duplicating it.
+    local cron_entry
+    cron_entry="* * * * * php ${PANEL_DIR}/artisan schedule:run >> /dev/null 2>&1"
+
+    (crontab -u www-data -l 2>/dev/null | grep -vF "${PANEL_DIR}/artisan schedule:run" || true
+     echo "$cron_entry") | crontab -u www-data -
+
+    ok "Application configured"
+}
+
+# ── Nginx ──────────────────────────────────────────────────────
+configure_nginx() {
+    step "Configuring Nginx"
+
+    cat > /etc/nginx/sites-available/pterodactyl.conf <<EOF
 server {
     listen 80;
     server_name ${DOMAIN};
-    return 301 https://\$server_name\$request_uri;
-}
 
-server {
-    listen 443 ssl http2;
-    server_name ${DOMAIN};
-
-    root /var/www/pterodactyl/public;
+    root ${PANEL_DIR}/public;
     index index.php;
-
-    ssl_certificate /etc/certs/panel/fullchain.pem;
-    ssl_certificate_key /etc/certs/panel/privkey.pem;
 
     client_max_body_size 100m;
     client_body_timeout 120s;
@@ -289,87 +470,139 @@ server {
         fastcgi_split_path_info ^(.+\.php)(/.+)\$;
         fastcgi_pass unix:/run/php/php${PHP_VERSION}-fpm.sock;
         fastcgi_index index.php;
-        include /etc/nginx/fastcgi_params;
+        include fastcgi_params;
         fastcgi_param PHP_VALUE "upload_max_filesize=100M \n post_max_size=100M";
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
     }
 
-    location ~ /\.ht {
+    location ~ /\. {
         deny all;
     }
 }
 EOF
 
-ln -sf /etc/nginx/sites-available/pterodactyl.conf /etc/nginx/sites-enabled/pterodactyl.conf
-nginx -t && systemctl restart nginx
+    ln -sfn /etc/nginx/sites-available/pterodactyl.conf \
+        /etc/nginx/sites-enabled/pterodactyl.conf
 
-# --- Queue Worker ---
-tee /etc/systemd/system/pteroq.service > /dev/null << 'EOF'
+    nginx -t
+    systemctl reload nginx
+
+    ok "Nginx configured"
+}
+
+# ── HTTPS ──────────────────────────────────────────────────────
+configure_ssl() {
+    step "Requesting HTTPS certificate"
+
+    echo "The domain must resolve to this VPS and ports 80/443 must be reachable."
+
+    if certbot --nginx \
+        --non-interactive \
+        --agree-tos \
+        --redirect \
+        --email "$EMAIL" \
+        -d "$DOMAIN"; then
+        ok "HTTPS certificate configured"
+    else
+        warn "Automatic HTTPS setup failed."
+        warn "Check DNS, firewall rules, and run certbot manually after fixing them."
+        warn "The Panel may not be reachable securely until HTTPS is configured."
+    fi
+}
+
+# ── Queue Worker ───────────────────────────────────────────────
+configure_queue() {
+    step "Configuring queue worker"
+
+    cat > /etc/systemd/system/pteroq.service <<EOF
 [Unit]
-Description=Pterodactyl Queue Worker
-After=redis-server.service
+Description=PRITAM Pterodactyl Queue Worker
+After=redis-server.service mariadb.service
+Requires=redis-server.service
 
 [Service]
 User=www-data
 Group=www-data
+WorkingDirectory=${PANEL_DIR}
 Restart=always
-ExecStart=/usr/bin/php /var/www/pterodactyl/artisan queue:work --queue=high,standard,low --sleep=3 --tries=3
+ExecStart=/usr/bin/php ${PANEL_DIR}/artisan queue:work --queue=high,standard,low --sleep=3 --tries=3
 RestartSec=5s
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-systemctl daemon-reload
-systemctl enable --now redis-server
-systemctl enable --now pteroq.service
-ok "Queue running"
+    systemctl daemon-reload
+    systemctl enable --now pteroq.service
 
-clear
-step "Create admin user"
+    ok "Queue worker enabled"
+}
 
-cd /var/www/pterodactyl
+# ── Admin Account ──────────────────────────────────────────────
+create_admin() {
+    step "Creating administrator account"
 
-# Update .env settings
-sed -i '/^APP_ENVIRONMENT_ONLY=/d' .env
-echo "APP_ENVIRONMENT_ONLY=false" >> .env
-sed -i '/RECAPTCHA_ENABLED=/d' .env
-echo 'RECAPTCHA_ENABLED=false' >> .env
-sed -i '/APP_NAME=/d' .env
-echo 'APP_NAME="SKA HOST"' >> .env
-TIMEZONE=$(timedatectl show --property=Timezone --value 2>/dev/null || echo "UTC")
-sed -i "s|APP_TIMEZONE=.*|APP_TIMEZONE=${TIMEZONE}|g" .env
+    cd "$PANEL_DIR"
 
-# SMTP defaults (user should update these)
-sed -i "s|MAIL_MAILER=.*|MAIL_MAILER=smtp|g" .env
-sed -i "s|MAIL_HOST=.*|MAIL_HOST=skahost@gmail.com|g" .env
-sed -i "s|MAIL_PORT=.*|MAIL_PORT=587|g" .env
-sed -i "s|MAIL_USERNAME=.*|MAIL_USERNAME=skahost@gmail.com|g" .env
-sed -i "s|MAIL_PASSWORD=.*|MAIL_PASSWORD=58@S5wZuWtpdDDX|g" .env
-sed -i "s|MAIL_ENCRYPTION=.*|MAIL_ENCRYPTION=tls|g" .env
-sed -i "s|MAIL_FROM_ADDRESS=.*|MAIL_FROM_ADDRESS=skahost@gmail.com|g" .env
-sed -i 's|MAIL_FROM_NAME=.*|MAIL_FROM_NAME="SKA HOST"|g' .env
+    php artisan p:user:make \
+        --email="$EMAIL" \
+        --username="$USERNAME" \
+        --name-first="Pritam" \
+        --name-last="Admin" \
+        --password="$ADMIN_PASSWORD" \
+        --admin=1
 
-php artisan p:location:make --short=IN --long="India" 2>/dev/null || true
+    unset ADMIN_PASSWORD
 
-# --- Cache optimization ---
-php artisan view:clear
-php artisan config:clear
-php artisan cache:clear
-php artisan config:cache
-chown -R www-data:www-data /var/www/pterodactyl/*
-php artisan queue:restart
+    ok "Administrator account created"
+}
 
-# --- Admin User ---
-php artisan p:user:make -n --email="$EMAIL" --username="${USERNAME}" --password="$PASSWORD" --admin=1 --name-first=My --name-last=Admin
+# ── Final Report ───────────────────────────────────────────────
+final_report() {
+    cd "$PANEL_DIR"
 
-# --- END REPORT ---
-clear
-echo -e "${HEADER_LINE}"
-echo -e "\n  ${CYAN}DEPLOYMENT COMPLETE${NC}"
-echo -e "  ${GRAY}Panel URL :${NC} ${WHITE}https://$DOMAIN${NC}"
-echo -e "  ${GRAY}Username  :${NC} ${WHITE}$USERNAME${NC}"
-echo -e "  ${GRAY}Password  :${NC} ${WHITE}$PASSWORD${NC}"
-echo -e "  ${GRAY}Email     :${NC} ${WHITE}$EMAIL${NC}"
-echo -e "\n  ${PURPLE}Enjoy your new Pterodactyl Panel!${NC}"
-echo -e "${HEADER_LINE}"
+    php artisan view:clear
+    php artisan config:clear
+    php artisan cache:clear
+    php artisan config:cache
+    php artisan queue:restart
+
+    chown -R www-data:www-data "$PANEL_DIR"
+
+    clear
+    line
+    echo -e "${GREEN}             PRITAM PANEL INSTALLATION FINISHED${NC}"
+    line
+    echo
+    echo -e "  ${WHITE}Panel URL :${NC} https://${DOMAIN}"
+    echo -e "  ${WHITE}Username  :${NC} ${USERNAME}"
+    echo -e "  ${WHITE}Email     :${NC} ${EMAIL}"
+    echo -e "  ${WHITE}Password  :${NC} Not displayed for security"
+    echo
+    warn "Save your credentials securely."
+    warn "Configure outgoing mail in .env before relying on email features."
+    line
+}
+
+# ── Main ───────────────────────────────────────────────────────
+main() {
+    show_banner
+
+    check_system
+    collect_config
+
+    install_dependencies
+    install_composer
+    setup_database
+    download_panel
+    configure_environment
+    setup_application
+    configure_nginx
+    configure_ssl
+    configure_queue
+    create_admin
+    final_report
+}
+
+main "$@"
+
