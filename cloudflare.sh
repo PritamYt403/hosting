@@ -36,29 +36,19 @@ get_sudo() {
     fi
 }
 
-service_exists() {
-    [[ -f /etc/systemd/system/cloudflared.service ||
-       -f /lib/systemd/system/cloudflared.service ||
-       -f /usr/lib/systemd/system/cloudflared.service ]]
-}
-
 install_tunnel() {
     banner
-    echo -e "${CYAN}INSTALL / SETUP CLOUDFLARE TUNNEL${RESET}"
+    echo -e "${CYAN}INSTALL / SETUP TUNNEL${RESET}"
     echo
 
-    if ! get_sudo; then
-        pause
-        return
-    fi
+    if ! get_sudo; then pause; return; fi
 
     if ! command -v apt-get >/dev/null 2>&1; then
-        echo -e "${RED}This script requires Ubuntu/Debian.${RESET}"
+        echo "Ubuntu/Debian with apt is required."
         pause
         return
     fi
 
-    echo -e "${CYAN}Installing dependencies...${RESET}"
     if ! "${SUDO[@]}" apt-get update ||
        ! "${SUDO[@]}" apt-get install -y curl ca-certificates; then
         echo -e "${RED}Dependency installation failed.${RESET}"
@@ -66,18 +56,13 @@ install_tunnel() {
         return
     fi
 
-    echo -e "${CYAN}Configuring Cloudflare repository...${RESET}"
     "${SUDO[@]}" install -d -m 0755 /usr/share/keyrings || {
         pause
         return
     }
 
     local key_tmp
-    key_tmp=$(mktemp) || {
-        echo "Could not create temporary file."
-        pause
-        return
-    }
+    key_tmp=$(mktemp) || { pause; return; }
 
     if ! curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg \
         -o "$key_tmp"; then
@@ -105,9 +90,10 @@ install_tunnel() {
         return
     fi
 
-    echo -e "${GREEN}Cloudflared installed successfully.${RESET}"
+    echo -e "${GREEN}✔ Cloudflared installed successfully.${RESET}"
 
-    if service_exists; then
+    if systemctl list-unit-files cloudflared.service --no-legend 2>/dev/null |
+        grep -q cloudflared.service; then
         echo
         echo -e "${YELLOW}Existing Cloudflared service detected.${RESET}"
         read -r -p "Replace its configuration? (yes/no): " confirm
@@ -123,79 +109,79 @@ install_tunnel() {
     fi
 
     echo
-    echo -e "${CYAN}Paste your Cloudflare Tunnel token.${RESET}"
-    echo "Accepted formats:"
-    echo "  1. The token only"
-    echo "  2. cloudflared tunnel run --token YOUR_TOKEN"
-    echo "  3. sudo cloudflared tunnel run --token YOUR_TOKEN"
+    echo -e "${CYAN}Paste your Cloudflare Tunnel token or full command.${RESET}"
+    echo "Examples:"
+    echo "  TOKEN"
+    echo "  cloudflared tunnel run --token TOKEN"
+    echo "  sudo cloudflared tunnel run --token TOKEN"
     echo
-    read -r -s -p "> " token
+    read -r -s -p "> " input
     echo
 
-    # Remove leading and trailing whitespace.
-    token="${token#"${token%%[![:space:]]*}"}"
-    token="${token%"${token##*[![:space:]]}"}"
+    # Trim surrounding whitespace.
+    input="$(printf '%s' "$input" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+    token="$input"
 
-    # Extract the token from a recognized command.
-    if [[ "$token" =~ ^(sudo[[:space:]]+)?cloudflared[[:space:]]+tunnel[[:space:]]+run[[:space:]]+--token[[:space:]]+(.+)$ ]]; then
+    # Extract token from a complete command.
+    if [[ "$input" =~ ^(sudo[[:space:]]+)?cloudflared[[:space:]]+tunnel[[:space:]]+run[[:space:]]+--token[=[:space:]]+(.+)$ ]]; then
         token="${BASH_REMATCH[2]}"
-    elif [[ "$token" =~ ^(sudo[[:space:]]+)?cloudflared[[:space:]]+service[[:space:]]+install[[:space:]]+(.+)$ ]]; then
+    elif [[ "$input" =~ ^(sudo[[:space:]]+)?cloudflared[[:space:]]+service[[:space:]]+install[[:space:]]+(.+)$ ]]; then
         token="${BASH_REMATCH[2]}"
-    elif [[ "$token" == sudo\ cloudflared* ||
-            "$token" == cloudflared* ]]; then
-        echo -e "${RED}Command format not recognized.${RESET}"
-        echo "Paste the token only, or the complete supported command."
-        unset token
+    elif [[ "$input" == *"--token"* ]]; then
+        # Also handle commands containing --token later in the text.
+        token="${input#*--token}"
+        token="${token#=}"
+        token="$(printf '%s' "$token" | sed 's/^[[:space:]]*//')"
+    elif [[ "$input" == sudo\ cloudflared* ||
+            "$input" == cloudflared* ]]; then
+        echo -e "${RED}Unsupported command format.${RESET}"
+        unset input token
         pause
         return
     fi
 
-    # Remove matching outer quotes.
-    if [[ ${#token} -ge 2 ]]; then
-        if [[ "$token" == \"*\" && "$token" == *\" ]]; then
-            token="${token:1:${#token}-2}"
-        elif [[ "$token" == \'*\' ]]; then
-            token="${token:1:${#token}-2}"
-        fi
+    # Strip surrounding quotes and whitespace.
+    token="$(printf '%s' "$token" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+    if [[ "$token" == \"*\" ]]; then
+        token="${token:1:${#token}-2}"
+    elif [[ "$token" == \'*\' ]]; then
+        token="${token:1:${#token}-2}"
     fi
 
-    token="${token#"${token%%[![:space:]]*}"}"
-    token="${token%"${token##*[![:space:]]}"}"
-
+    # Token must be a single non-empty value.
     if [[ -z "$token" || "$token" == *[[:space:]]* ||
-          "$token" == *--token* ]]; then
-        echo -e "${RED}Invalid token format.${RESET}"
-        echo "Copy the complete tunnel token from your Cloudflare dashboard."
-        unset token
+          "$token" == *"--token"* ]]; then
+        echo -e "${RED}✘ Token format not recognized.${RESET}"
+        echo "Paste the complete token or supported command."
+        unset input token
         pause
         return
     fi
 
     if ! command -v systemctl >/dev/null 2>&1; then
         echo -e "${RED}systemd is required for service installation.${RESET}"
-        unset token
+        unset input token
         pause
         return
     fi
 
     echo
-    echo -e "${CYAN}Installing tunnel service...${RESET}"
+    echo -e "${CYAN}→ Installing tunnel service...${RESET}"
 
     if "${SUDO[@]}" cloudflared service install "$token"; then
-        unset token
+        unset input token
 
         if "${SUDO[@]}" systemctl enable --now cloudflared &&
            systemctl is-active --quiet cloudflared; then
-            echo
-            echo -e "${GREEN}Tunnel installed and running successfully!${RESET}"
+            echo -e "${GREEN}✔ Tunnel installed and running!${RESET}"
         else
-            echo -e "${YELLOW}Service installed, but startup needs checking.${RESET}"
+            echo -e "${YELLOW}Service installed; check its startup status.${RESET}"
             echo "Logs: sudo journalctl -u cloudflared -n 50 --no-pager"
         fi
     else
-        unset token
-        echo -e "${RED}Tunnel setup failed.${RESET}"
-        echo "Check the token and tunnel settings in Cloudflare."
+        unset input token
+        echo -e "${RED}✘ Tunnel setup failed.${RESET}"
+        echo "Check the token and Cloudflare dashboard configuration."
     fi
 
     pause
@@ -203,30 +189,18 @@ install_tunnel() {
 
 check_status() {
     banner
+    if ! get_sudo; then pause; return; fi
 
-    if ! get_sudo; then
-        pause
-        return
-    fi
-
-    if systemctl is-active --quiet cloudflared 2>/dev/null; then
-        echo -e "${GREEN}Cloudflared is RUNNING.${RESET}"
-    elif service_exists; then
-        echo -e "${YELLOW}Service exists but is NOT RUNNING.${RESET}"
-    else
-        echo -e "${RED}Cloudflared service is not installed.${RESET}"
-    fi
-
+    "${SUDO[@]}" systemctl --no-pager --full status cloudflared || true
     echo
-    "${SUDO[@]}" systemctl --no-pager --full status cloudflared 2>/dev/null || true
+    echo "Logs: sudo journalctl -u cloudflared -n 50 --no-pager"
     pause
 }
 
 uninstall_tunnel() {
     banner
-    echo -e "${RED}COMPLETE CLOUDFLARED UNINSTALL${RESET}"
+    echo -e "${RED}COMPLETE UNINSTALL${RESET}"
     echo "This removes the service, package and repository."
-    echo
     read -r -p "Type YES to confirm: " confirm
 
     [[ "$confirm" == "YES" ]] || {
@@ -235,26 +209,21 @@ uninstall_tunnel() {
         return
     }
 
-    if ! get_sudo; then
-        pause
-        return
-    fi
+    if ! get_sudo; then pause; return; fi
 
     "${SUDO[@]}" cloudflared service uninstall 2>/dev/null || true
     "${SUDO[@]}" systemctl disable --now cloudflared 2>/dev/null || true
 
-    if command -v apt-get >/dev/null 2>&1; then
-        if ! "${SUDO[@]}" apt-get remove -y cloudflared; then
-            echo -e "${RED}Package removal failed.${RESET}"
-            pause
-            return
-        fi
+    if ! "${SUDO[@]}" apt-get remove -y cloudflared; then
+        echo -e "${RED}Package removal failed.${RESET}"
+        pause
+        return
     fi
 
     "${SUDO[@]}" rm -f /etc/apt/sources.list.d/cloudflared.list
     "${SUDO[@]}" rm -f /usr/share/keyrings/cloudflare-main.gpg
 
-    echo -e "${GREEN}Cloudflared removal completed.${RESET}"
+    echo -e "${GREEN}✔ Cloudflared removed.${RESET}"
     pause
 }
 
