@@ -142,6 +142,67 @@ connect_admin() {
     return 1
 }
 
+install_mariadb() {
+    if [[ $EUID -ne 0 ]]; then
+        echo -e "${RED}Run this installer as root.${RESET}"
+        return 1
+    fi
+
+    if detect_database; then
+        echo -e "${GREEN}Database client already exists: ${DB_CLIENT}${RESET}"
+        return 0
+    fi
+
+    echo -e "${YELLOW}MySQL/MariaDB client is missing.${RESET}"
+    echo "This will install the MariaDB server and client packages."
+    read -rp "Install MariaDB now? [y/N]: " confirm
+    case "$confirm" in
+        y|Y|yes|YES|Yes) ;;
+        *)
+            echo -e "${YELLOW}Installation cancelled. No changes made.${RESET}"
+            return 1
+            ;;
+    esac
+
+    if command -v apt-get >/dev/null 2>&1; then
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update || return 1
+        apt-get install -y mariadb-server mariadb-client || return 1
+    elif command -v dnf >/dev/null 2>&1; then
+        dnf install -y mariadb-server mariadb || return 1
+    elif command -v yum >/dev/null 2>&1; then
+        yum install -y mariadb-server mariadb || return 1
+    else
+        echo -e "${RED}Unsupported package manager.${RESET}"
+        echo "Supported systems: Ubuntu/Debian, Fedora/RHEL, and compatible dnf/yum systems."
+        echo "Install MariaDB server/client with your OS package manager, then retry."
+        return 1
+    fi
+
+    if command -v systemctl >/dev/null 2>&1; then
+        if systemctl enable --now mariadb 2>/dev/null; then
+            :
+        elif systemctl enable --now mysql 2>/dev/null; then
+            :
+        else
+            echo -e "${RED}Packages installed, but the database service could not be started.${RESET}"
+            echo "Check: systemctl status mariadb --no-pager"
+            return 1
+        fi
+    else
+        echo -e "${YELLOW}Packages installed, but systemd is unavailable; start MariaDB using your OS service manager.${RESET}"
+    fi
+
+    if ! detect_database; then
+        echo -e "${RED}Installation finished, but no database client was detected. Not marking success.${RESET}"
+        return 1
+    fi
+
+    echo -e "${GREEN}${BOLD}MariaDB client detected: ${DB_CLIENT}${RESET}"
+    "$DB_CLIENT" --version || return 1
+    return 0
+}
+
 prepare_database() {
     if [[ $EUID -ne 0 ]]; then
         echo -e "${RED}Please run as root: sudo bash database.sh${RESET}"
@@ -149,17 +210,11 @@ prepare_database() {
     fi
 
     if ! detect_database; then
-        echo -e "${RED}No MySQL/MariaDB client was found.${RESET}"
-        echo
-        echo "This script detects and uses an existing database installation."
-        echo "It will not claim success or create users without a working client."
-        echo
-        echo "On Ubuntu/Debian, install MariaDB if you intend to use it:"
-        echo "  apt-get update"
-        echo "  apt-get install mariadb-server mariadb-client"
-        echo
-        echo "Then start the service and run this script again."
-        return 1
+        install_mariadb || return 1
+        detect_database || {
+            echo -e "${RED}Database client is still unavailable after installation.${RESET}"
+            return 1
+        }
     fi
 
     echo -e "${GREEN}Detected client: ${DB_CLIENT}${RESET}"
@@ -329,6 +384,7 @@ main() {
         echo -e "${CYAN}  [1]${WHITE} Detect Database Installation"
         echo -e "${GREEN}  [2]${WHITE} Create Database & User"
         echo -e "${ORANGE}  [3]${WHITE} Check Database Status"
+        echo -e "${YELLOW}  [4]${WHITE} Install MariaDB Server + Client"
         echo -e "${RED}  [0]${WHITE} Exit"
         line
 
@@ -349,12 +405,16 @@ main() {
                 database_status
                 pause
                 ;;
+            4)
+                install_mariadb
+                pause
+                ;;
             0)
                 echo -e "${GREEN}Exiting PRITAM Database Manager.${RESET}"
                 exit 0
                 ;;
             *)
-                echo -e "${RED}Invalid option. Choose 0-3.${RESET}"
+                echo -e "${RED}Invalid option. Choose 0-4.${RESET}"
                 sleep 1
                 ;;
         esac
