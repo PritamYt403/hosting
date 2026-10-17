@@ -21,12 +21,14 @@ loading() {
 header() {
     clear
     echo -e "${PURPLE}"
-    echo '██████╗ ██████╗ ██╗████████╗ █████╗ ███╗   ███╗'
-    echo '██╔══██╗██╔══██╗██║╚══██╔══╝██╔══██╗████╗ ████║'
-    echo '██████╔╝██████╔╝██║   ██║   ███████║██╔████╔██║'
-    echo '██╔═══╝ ██╔══██╗██║   ██║   ██╔══██║██║╚██╔╝██║'
-    echo '██║     ██║  ██║██║   ██║   ██║  ██║██║ ╚═╝ ██║'
-    echo '╚═╝     ╚═╝  ╚═╝╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝'
+    cat <<'EOF'
+██████╗ ██████╗ ██╗████████╗ █████╗ ███╗   ███╗
+██╔══██╗██╔══██╗██║╚══██╔══╝██╔══██╗████╗ ████║
+██████╔╝██████╔╝██║   ██║   ███████║██╔████╔██║
+██╔═══╝ ██╔══██╗██║   ██║   ██╔══██╗██║╚██╔╝██║
+██║     ██║  ██║██║   ██║   ██║  ██║██║ ╚═╝ ██║
+╚═╝     ╚═╝  ╚═╝╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝
+EOF
     echo -e "${RESET}"
     echo "             Made By - Pritam"
     echo
@@ -34,27 +36,20 @@ header() {
 
 run_module() {
     local file="$1"
-    local url="${BASE}/${file}"
+    local tmp
+
+    tmp="$(mktemp)" || return 1
 
     echo -e "${CYAN}Launching ${file}...${RESET}"
 
-    if ! command -v curl >/dev/null 2>&1; then
-        echo -e "${RED}Please install curl first.${RESET}"
-        read -rp "Press Enter..."
-        return
-    fi
-
-    local tmp
-    tmp="$(mktemp)" || return
-
-    if curl -fsSL --max-time 30 "$url" -o "$tmp"; then
+    if curl -fsSL --max-time 30 "${BASE}/${file}" -o "$tmp"; then
         if bash -n "$tmp"; then
             bash "$tmp"
         else
-            echo -e "${RED}Script syntax check failed.${RESET}"
+            echo -e "${RED}Script syntax check failed!${RESET}"
         fi
     else
-        echo -e "${RED}Could not download ${file}.${RESET}"
+        echo -e "${RED}Download failed: ${file}${RESET}"
         echo "Check that the file exists in your GitHub repository."
     fi
 
@@ -89,7 +84,7 @@ panel_menu() {
             7) run_module "tailscale.sh" ;;
             8) run_module "database.sh" ;;
             9) return ;;
-            *) echo "Invalid option"; sleep 1 ;;
+            *) echo -e "${RED}Invalid option!${RESET}"; sleep 1 ;;
         esac
     done
 }
@@ -111,13 +106,21 @@ main_menu() {
             B|b) run_module "vps-maker.sh" ;;
             C|c) run_module "tools.sh" ;;
             D|d) run_module "system-edit.sh" ;;
-            E|e) echo -e "${GREEN}Goodbye!${RESET}"; exit 0 ;;
-            *) echo "Invalid option"; sleep 1 ;;
+            E|e)
+                echo -e "${GREEN}Goodbye!${RESET}"
+                exit 0
+                ;;
+            *) echo -e "${RED}Invalid option!${RESET}"; sleep 1 ;;
         esac
     done
 }
 
+if ! command -v curl >/dev/null 2>&1; then
+    echo "curl is required. Install it first."
+    exit 1
+fi
+
 loading
-echo -e "${GREEN}[✓] PRITAM Menu Loaded!${RESET}"
+echo -e "${GREEN}[✓] PRITAM Menu Loaded Successfully!${RESET}"
 sleep 1
 main_menu
