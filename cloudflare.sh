@@ -115,7 +115,7 @@ install_tunnel() {
     echo "  cloudflared tunnel run --token TOKEN"
     echo "  sudo cloudflared tunnel run --token TOKEN"
     echo
-    read -r -s -p "> " input
+    read -r -p "> " input
     echo
 
     # Trim surrounding whitespace.
