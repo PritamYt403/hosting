@@ -253,3 +253,4 @@ if ! setup_database; then
   exit 1
 fi
 finish
+
