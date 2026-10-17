@@ -1,10 +1,10 @@
 
 #!/usr/bin/env bash
 
-# ═══════════════════════════════════════════════
-#           PRITAM VPS SYSTEM MONITOR
-#                  Made by Pritam
-# ═══════════════════════════════════════════════
+# ═══════════════════════════════════════════
+#       PRITAM VPS SYSTEM MONITOR
+#              Made by Pritam
+# ═══════════════════════════════════════════
 
 PURPLE='\033[1;35m'
 CYAN='\033[1;36m'
@@ -16,27 +16,11 @@ GRAY='\033[0;37m'
 RESET='\033[0m'
 
 line() {
-    printf "${GRAY}%s${RESET}\n" \
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-}
-
-loading_animation() {
-    local frames=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
-
-    for frame in "${frames[@]}"; do
-        printf "\r${CYAN}  %s Initializing PRITAM System Monitor...${RESET}" "$frame"
-        sleep 0.07
-    done
-
-    printf "\r${GREEN}  ✓ System scan completed.                         ${RESET}\n\n"
+    printf "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n"
 }
 
 get_hostname() {
-    if [[ -r /etc/hostname ]]; then
-        cat /etc/hostname
-    else
-        uname -n 2>/dev/null || echo "Unavailable"
-    fi
+    hostname 2>/dev/null || uname -n
 }
 
 get_uptime() {
@@ -44,16 +28,9 @@ get_uptime() {
         local seconds total days hours mins
         read -r seconds _ < /proc/uptime
         total=${seconds%.*}
-
-        [[ "$total" =~ ^[0-9]+$ ]] || {
-            echo "Unavailable"
-            return
-        }
-
         days=$((total / 86400))
         hours=$(((total % 86400) / 3600))
         mins=$(((total % 3600) / 60))
-
         printf "%dd %dh %dm" "$days" "$hours" "$mins"
     else
         echo "Unavailable"
@@ -61,83 +38,53 @@ get_uptime() {
 }
 
 get_memory() {
-    if [[ ! -r /proc/meminfo ]]; then
-        echo "Unavailable"
-        return
-    fi
-
-    awk '
-        /^MemTotal:/ { total=$2 }
-        /^MemAvailable:/ { available=$2 }
-        END {
-            if (total > 0) {
-                used=total-available
-                printf "%.1f GiB / %.1f GiB",
-                    used/1048576, total/1048576
-            } else {
-                print "Unavailable"
+    if command -v free >/dev/null 2>&1; then
+        free -h | awk '
+            /^Mem:/ {
+                printf "Used: %s / Total: %s | Available: %s",
+                    $3, $2, $7
             }
-        }
-    ' /proc/meminfo
+        '
+    else
+        echo "Unavailable"
+    fi
 }
 
 get_memory_percent() {
-    if [[ -r /proc/meminfo ]]; then
-        awk '
-            /^MemTotal:/ { total=$2 }
-            /^MemAvailable:/ { available=$2 }
-            END {
-                if (total > 0)
-                    printf "%.0f", ((total-available)/total)*100
-                else
-                    print 0
-            }
-        ' /proc/meminfo
-    else
-        echo 0
-    fi
+    free -b 2>/dev/null | awk '
+        /^Mem:/ {
+            if ($2 > 0)
+                printf "%d", ($3 * 100 / $2)
+            else
+                print 0
+        }
+    '
 }
 
 get_disk() {
-    if command -v df >/dev/null 2>&1; then
-        df -hP . 2>/dev/null |
-            awk 'NR==2 {print $3 " / " $2 " (" $5 ")"}'
-    else
-        echo "Unavailable"
-    fi
+    df -hP / 2>/dev/null |
+        awk 'NR==2 {print $3 " used / " $2 " total | " $4 " available (" $5 ")"}'
 }
 
 get_disk_percent() {
-    if command -v df >/dev/null 2>&1; then
-        df -P . 2>/dev/null |
-            awk 'NR==2 {gsub(/%/, "", $5); print $5}'
-    else
-        echo 0
-    fi
+    df -P / 2>/dev/null |
+        awk 'NR==2 {gsub(/%/, "", $5); print $5}'
 }
 
 get_cpu() {
     if [[ -r /proc/cpuinfo ]]; then
-        awk -F: '
-            /model name/ {
-                sub(/^[ \t]+/, "", $2)
-                print $2
-                exit
-            }
-        ' /proc/cpuinfo
-    elif [[ -r /proc/device-tree/model ]]; then
-        tr -d '\0' < /proc/device-tree/model
+        awk -F: '/model name/ {
+            sub(/^[ \t]+/, "", $2)
+            print $2
+            exit
+        }' /proc/cpuinfo
     else
         uname -m
     fi
 }
 
 get_cpu_cores() {
-    if command -v nproc >/dev/null 2>&1; then
-        nproc 2>/dev/null || echo "Unknown"
-    else
-        grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo "Unknown"
-    fi
+    nproc 2>/dev/null || grep -c '^processor' /proc/cpuinfo
 }
 
 get_os() {
@@ -150,10 +97,7 @@ get_os() {
 }
 
 progress_bar() {
-    local value="${1:-0}"
-    local width=20
-    local filled i color
-
+    local value="${1:-0}" width=20 filled i color
     [[ "$value" =~ ^[0-9]+$ ]] || value=0
     (( value > 100 )) && value=100
 
@@ -168,7 +112,7 @@ progress_bar() {
 
     printf "${color}["
     for ((i=0; i<width; i++)); do
-        if (( i < filled )); then
+        if ((i < filled)); then
             printf "█"
         else
             printf "░"
@@ -180,7 +124,6 @@ progress_bar() {
 show_status() {
     clear 2>/dev/null || true
 
-    echo
     echo -e "${PURPLE}"
     cat <<'EOF'
   ██████╗ ██████╗ ██╗████████╗ █████╗ ███╗   ███╗
@@ -191,26 +134,25 @@ show_status() {
   ╚═╝     ╚═╝  ╚═╝╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝
 EOF
     echo -e "${RESET}"
-
     echo -e "${WHITE}              VPS SYSTEM MONITOR${RESET}"
-    echo -e "${CYAN}                Made By - Pritam${RESET}"
+    echo -e "${CYAN}                 Made By Pritam${RESET}"
     echo
 
     line
-    loading_animation
+    printf "${CYAN}  Scanning system information...${RESET}\n\n"
 
-    local host user_name directory system uptime_text
-    local memory disk cpu os cores mem_percent disk_percent
+    local host user_name directory os kernel uptime_text
+    local memory disk cpu cores mem_percent disk_percent
 
     host="$(get_hostname)"
-    user_name="${USER:-$(id -un 2>/dev/null || echo Unknown)}"
-    directory="${PWD:-Unknown}"
-    system="$(uname -srm 2>/dev/null || echo Unavailable)"
+    user_name="$(id -un 2>/dev/null || echo Unknown)"
+    directory="$PWD"
+    os="$(get_os)"
+    kernel="$(uname -r)"
     uptime_text="$(get_uptime)"
     memory="$(get_memory)"
     disk="$(get_disk)"
     cpu="$(get_cpu)"
-    os="$(get_os)"
     cores="$(get_cpu_cores)"
     mem_percent="$(get_memory_percent)"
     disk_percent="$(get_disk_percent)"
@@ -220,20 +162,20 @@ EOF
     printf "  ${CYAN}║${RESET} ${WHITE}%-16s${RESET} %-36.36s ${CYAN}║${RESET}\n" "User" "$user_name"
     printf "  ${CYAN}║${RESET} ${WHITE}%-16s${RESET} %-36.36s ${CYAN}║${RESET}\n" "Directory" "$directory"
     printf "  ${CYAN}║${RESET} ${WHITE}%-16s${RESET} %-36.36s ${CYAN}║${RESET}\n" "Operating System" "$os"
-    printf "  ${CYAN}║${RESET} ${WHITE}%-16s${RESET} %-36.36s ${CYAN}║${RESET}\n" "Kernel" "$system"
+    printf "  ${CYAN}║${RESET} ${WHITE}%-16s${RESET} %-36.36s ${CYAN}║${RESET}\n" "Kernel" "$kernel"
     printf "  ${CYAN}║${RESET} ${WHITE}%-16s${RESET} %-36.36s ${CYAN}║${RESET}\n" "Uptime" "$uptime_text"
     printf "  ${CYAN}║${RESET} ${WHITE}%-16s${RESET} %-36.36s ${CYAN}║${RESET}\n" "CPU Cores" "$cores"
     echo -e "${CYAN}  ╚═════════════════════════════════════════════════════╝${RESET}"
 
     echo
     echo -e "${PURPLE}  ┌────────────── RESOURCE MONITOR ─────────────────────┐${RESET}"
-    echo -e "${PURPLE}  │${RESET} ${WHITE}Memory Usage${RESET}"
+    echo -e "${PURPLE}  │${RESET} ${WHITE}RAM (from free -h)${RESET}"
     echo -e "${PURPLE}  │${RESET} $memory"
-    echo -e "${PURPLE}  │${RESET} $(progress_bar "$mem_percent")"
+    echo -e "${PURPLE}  │${RESET} $(progress_bar "${mem_percent:-0}")"
     echo -e "${PURPLE}  │${RESET}"
-    echo -e "${PURPLE}  │${RESET} ${WHITE}Disk Usage (current filesystem)${RESET}"
+    echo -e "${PURPLE}  │${RESET} ${WHITE}Root Disk (from df -h /)${RESET}"
     echo -e "${PURPLE}  │${RESET} $disk"
-    echo -e "${PURPLE}  │${RESET} $(progress_bar "$disk_percent")"
+    echo -e "${PURPLE}  │${RESET} $(progress_bar "${disk_percent:-0}")"
     echo -e "${PURPLE}  └─────────────────────────────────────────────────────┘${RESET}"
 
     echo
@@ -243,8 +185,8 @@ EOF
 
     echo
     line
-    echo -e "${GREEN}  ✓ PRITAM System Monitor completed successfully.${RESET}"
-    echo -e "${GRAY}  All values reflect the environment running this script.${RESET}"
+    echo -e "${GREEN}  ✓ PRITAM System Monitor completed.${RESET}"
+    echo -e "${GRAY}  RAM: free -h | Disk: df -h /${RESET}"
     echo
     read -rp "  Press Enter to return to menu..." _
 }
