@@ -1,0 +1,210 @@
+#!/bin/bash
+
+# ==========================================
+# COLOR & STYLE DEFINITIONS
+# ==========================================
+RESET="\e[0m"
+BOLD="\e[1m"
+DIM="\e[2m"
+
+# Colors
+RED="\e[31m"
+GREEN="\e[32m"
+YELLOW="\e[33m"
+BLUE="\e[34m"
+MAGENTA="\e[35m"
+CYAN="\e[36m"
+WHITE="\e[37m"
+
+# ==========================================
+# UI FUNCTIONS
+# ==========================================
+
+print_menu() {
+    clear
+    # ASCII Banner
+    echo -e "${GREEN}${BOLD}"
+    echo -e "   ██████  ██████   ██████   █████  ███    ███ ███████ ██████  "
+    echo -e "  ██       ██   ██ ██       ██   ██ ████  ████ ██      ██   ██ "
+    echo -e "   █████   ██   ██ ██   ███ ███████ ██ ████ ██ █████   ██████  "
+    echo -e "       ██  ██   ██ ██    ██ ██   ██ ██  ██  ██ ██      ██   ██ "
+    echo -e "   ██████  ██████   ██████  ██   ██ ██      ██ ███████ ██   ██ "
+    echo -e "${RESET}\n"
+
+    # Main Menu Box
+    echo -e "${CYAN}  ╭──────────────────────────────────────────────────────╮${RESET}"
+    echo -e "${CYAN}  │${BOLD}${WHITE}        D E V E L O P M E N T   M E N U  (V26.1)      ${CYAN}│${RESET}"
+    echo -e "${CYAN}  ├──────────────────────────────────────────────────────┤${RESET}"
+    echo -e "${CYAN}  │                                                      │${RESET}"
+    echo -e "${CYAN}  │   ${GREEN}[1]${RESET} Environment Tool                               ${CYAN}│${RESET}"
+    echo -e "${CYAN}  │   ${YELLOW}[2]${RESET} Run Virtual Machine Installer (KVM)            ${CYAN}│${RESET}"
+    echo -e "${CYAN}  │   ${BLUE}[3]${RESET} Run Virtual Machine Installer (No KVM)         ${CYAN}│${RESET}"
+    echo -e "${CYAN}  │   ${MAGENTA}[4]${RESET} Proxmox Setup                                  ${CYAN}│${RESET}"
+    echo -e "${CYAN}  │   ${RED}[5]${RESET} Exit                                           ${CYAN}│${RESET}"
+    echo -e "${CYAN}  │                                                      │${RESET}"
+    echo -e "${CYAN}  ╰──────────────────────────────────────────────────────╯${RESET}"
+    echo -e ""
+}
+
+print_status() {
+    local text="$1"
+    local color="$2"
+    echo -e "\n  ${color}${BOLD}▶ ${text}${RESET}\n"
+}
+
+print_divider() {
+    echo -e "  ${DIM}────────────────────────────────────────────────────────${RESET}"
+}
+
+# ==========================================
+# MAIN LOOP
+# ==========================================
+
+while true; do
+    print_menu
+    
+    # Sleek prompt
+    echo -ne "  ${CYAN}▶${RESET} ${BOLD}Select Option:${RESET} "
+    read -p "" op
+    
+    case $op in
+    
+    # ---------------------------------------------------------
+    # (1) Environment Setup TOOL
+    # ---------------------------------------------------------
+    1)
+        clear
+        print_status "🔧 Running Environment Tool Setup..." "$GREEN"
+        print_divider
+        
+        echo -e "  ${CYAN}🧹 Cleaning up old files...${RESET}"
+        cd ~ || exit
+        rm -rf myapp flutter
+        
+        # Ensure vm directory exists before cd
+        mkdir -p vm && cd vm || exit
+        
+        if [ ! -d ".idx" ]; then
+            echo -e "  ${GREEN}📁 Creating .idx directory...${RESET}"
+            mkdir .idx
+            cd .idx || exit
+            
+            echo -e "  ${CYAN}📝 Creating dev.nix configuration...${RESET}"
+            cat <<EOF > dev.nix
+{ pkgs, ... }: {
+  channel = "stable-24.05";
+
+  packages = with pkgs; [
+    unzip
+    openssh
+    git
+    qemu_kvm
+    sudo
+    cdrkit
+    cloud-utils
+    qemu
+  ];
+
+  env = {
+    EDITOR = "nano";
+  };
+
+  idx = {
+    extensions = [
+      "Dart-Code.flutter"
+      "Dart-Code.dart-code"
+    ];
+
+    workspace = {
+      onCreate = { };
+      onStart = { };
+    };
+
+    previews = {
+      enable = false;
+    };
+  };
+}
+EOF
+            
+            echo -e "\n  ${GREEN}${BOLD}✅ Tool setup complete!${RESET}"
+            echo -e "  ${CYAN}╭──────────────────────────────────────╮${RESET}"
+            echo -e "  ${CYAN}│${RESET} ${DIM}Status:${RESET}   ${GREEN}Ready to use${RESET}             ${CYAN}│${RESET}"
+            echo -e "  ${CYAN}│${RESET} ${DIM}Location:${RESET} ${YELLOW}~/vm/.idx${RESET}                ${CYAN}│${RESET}"
+            echo -e "  ${CYAN}╰──────────────────────────────────────╯${RESET}"
+        else
+            echo -e "  ${YELLOW}⚠ Directory .idx already exists — skipping.${RESET}"
+        fi
+        
+        echo -e ""
+        print_divider
+        read -p "  ↩ Press Enter to return..."
+        ;;
+    
+    # ---------------------------------------------------------
+    # (2) Run VM1 Kvm
+    # ---------------------------------------------------------
+    2)
+        clear
+        print_status "🌐 Starting IDX VM (KVM) From GitHub..." "$YELLOW"
+        print_divider
+        
+        echo -e "  ${CYAN}📡 Fetching script...${RESET}"
+        bash <(curl -s https://raw.githubusercontent.com/sdgamer8263-sketch/VPS/main/Vm1)
+        
+        echo -e ""
+        print_divider
+        read -p "  ↩ Press Enter to return..."
+        ;;
+
+    # ---------------------------------------------------------
+    # (3) Run VM2 No KVM
+    # ---------------------------------------------------------
+    3)
+        clear
+        print_status "🌐 Starting VM (No KVM) From GitHub..." "$BLUE"
+        print_divider
+        
+        echo -e "  ${CYAN}📡 Fetching scripts...${RESET}"
+        bash <(curl -s https://raw.githubusercontent.com/sdgamer8263-sketch/VPS/main/Dd)
+        bash <(curl -s https://raw.githubusercontent.com/sdgamer8263-sketch/VPS/main/Vm2)
+        
+        echo -e ""
+        print_divider
+        read -p "  ↩ Press Enter to return..."
+        ;;
+
+    # ---------------------------------------------------------
+    # (4) Proxmox Setup
+    # ---------------------------------------------------------
+    4)
+        clear
+        print_status "🌐 Starting Proxmox Setup From GitHub..." "$MAGENTA"
+        print_divider
+        
+        echo -e "  ${CYAN}📡 Fetching script...${RESET}"
+        bash <(curl -s https://raw.githubusercontent.com/sdgamer8263-sketch/VPS/main/Proxmox)
+        
+        echo -e ""
+        print_divider
+        read -p "  ↩ Press Enter to return..."
+        ;;  
+
+    # ---------------------------------------------------------
+    # (5) EXIT
+    # ---------------------------------------------------------
+    5)
+        clear
+        echo -e "\n  ${CYAN}╭──────────────────────────────────────────────────────╮${RESET}"
+        echo -e "  ${CYAN}│${RESET}${BOLD}${WHITE}                     E X I T I N G                    ${CYAN}│${RESET}"
+        echo -e "  ${CYAN}╰──────────────────────────────────────────────────────╯${RESET}\n"
+        echo -e "  ${YELLOW}👋 Thank you for using the Development Menu!${RESET}\n"
+        exit 0
+        ;;
+    
+    *)
+        echo -e "\n  ${RED}❌ Invalid Option! Please try again.${RESET}"
+        sleep 1
+        ;;
+    esac
+done
