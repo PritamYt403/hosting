@@ -1,95 +1,64 @@
 #!/bin/bash
 
+# ==========================================
+# COLOR & STYLE DEFINITIONS
+# ==========================================
 RESET="\e[0m"
 BOLD="\e[1m"
 DIM="\e[2m"
 
-RED="\e[38;5;196m"
-GREEN="\e[38;5;82m"
-YELLOW="\e[38;5;226m"
-BLUE="\e[38;5;39m"
-MAGENTA="\e[38;5;201m"
-CYAN="\e[38;5;51m"
-WHITE="\e[97m"
+# Colors
+RED="\e[31m"
+GREEN="\e[32m"
+YELLOW="\e[33m"
+BLUE="\e[34m"
+MAGENTA="\e[35m"
+CYAN="\e[36m"
+WHITE="\e[37m"
 
-BASE_URL="https://raw.githubusercontent.com/PritamYt403/pterodactyl/main"
+# ==========================================
+# UI FUNCTIONS
+# ==========================================
 
 print_menu() {
     clear
+    # ASCII Banner
+    echo -e "${GREEN}${BOLD}"
+    echo -e "  ██████  ██████  ██ ████████  █████  ███    ███"
+    echo -e "  ██   ██ ██   ██ ██    ██    ██   ██ ████  ████"
+    echo -e "  ██████  ██████  ██    ██    ███████ ██ ████ ██"
+    echo -e "  ██      ██      ██    ██    ██   ██ ██  ██  ██"
+    echo -e "  ██      ██      ██    ██    ██   ██ ██      ██"
+    echo -e "${RESET}\n"
 
-    echo -e "${CYAN}${BOLD}"
-    echo "  ██████  ██████  ██ ████████  █████  ███    ███"
-    echo "  ██   ██ ██   ██ ██    ██    ██   ██ ████  ████"
-    echo "  ██████  ██████  ██    ██    ███████ ██ ████ ██"
-    echo "  ██      ██      ██    ██    ██   ██ ██  ██  ██"
-    echo "  ██      ██      ██    ██    ██   ██ ██      ██"
-    echo -e "${RESET}"
-
-    echo -e "${CYAN}  ╔══════════════════════════════════════════════════════╗"
-    echo -e "  ║${WHITE}${BOLD}                 PRITAM VPS MAKER                     ${CYAN}║"
-    echo -e "  ╠══════════════════════════════════════════════════════╣"
-    echo -e "  ║                                                      ║"
-    echo -e "  ║   ${GREEN}[1]${WHITE}  Create VPS (KVM)                              ${CYAN}║"
-    echo -e "  ║   ${YELLOW}[2]${WHITE}  Create VPS (No KVM)                           ${CYAN}║"
-    echo -e "  ║   ${RED}[0]${WHITE}  Exit                                           ${CYAN}║"
-    echo -e "  ║                                                      ║"
-    echo -e "  ╚══════════════════════════════════════════════════════╝${RESET}"
-    echo
+    # Main Menu Box
+    echo -e "${CYAN}  ╭──────────────────────────────────────────────────────╮${RESET}"
+    echo -e "${CYAN}  │${BOLD}${WHITE}                 P R I T A M   V P S                  ${CYAN}│${RESET}"
+    echo -e "${CYAN}  ├──────────────────────────────────────────────────────┤${RESET}"
+    echo -e "${CYAN}  │                                                      │${RESET}"
+    echo -e "${CYAN}  │   ${YELLOW}[1]${RESET} Run Virtual Machine Installer (KVM)            ${CYAN}│${RESET}"
+    echo -e "${CYAN}  │   ${BLUE}[2]${RESET} Run Virtual Machine Installer (No KVM)         ${CYAN}│${RESET}"
+    echo -e "${CYAN}  │   ${RED}[0]${RESET} Exit                                           ${CYAN}│${RESET}"
+    echo -e "${CYAN}  │                                                      │${RESET}"
+    echo -e "${CYAN}  ╰──────────────────────────────────────────────────────╯${RESET}"
+    echo -e ""
 }
 
-run_script() {
-    local name="$1"
-    local url="${BASE_URL}/${name}"
-    local tmp
-
-    tmp="$(mktemp)" || return 1
-
-    echo -e "\n${CYAN}▶ Downloading ${name}...${RESET}"
-
-    if ! curl -fsSL --connect-timeout 10 "$url" -o "$tmp"; then
-        echo -e "${RED}❌ Download failed. Check GitHub file: ${name}${RESET}"
-        rm -f "$tmp"
-        return 1
-    fi
-
-    if [[ ! -s "$tmp" ]]; then
-        echo -e "${RED}❌ Downloaded file is empty.${RESET}"
-        rm -f "$tmp"
-        return 1
-    fi
-
-    bash "$tmp"
-    local status=$?
-    rm -f "$tmp"
-    return "$status"
+print_status() {
+    local text="$1"
+    local color="$2"
+    echo -e "\n  ${color}${BOLD}▶ ${text}${RESET}\n"
 }
+
+print_divider() {
+    echo -e "  ${DIM}────────────────────────────────────────────────────────${RESET}"
+}
+
+# ==========================================
+# MAIN LOOP
+# ==========================================
 
 while true; do
     print_menu
-    read -rp "$(echo -e "${CYAN}  ➤ Select Option [0-2]: ${RESET}")" choice
 
-    case "$choice" in
-        1)
-            clear
-            echo -e "${GREEN}${BOLD}▶ PRITAM KVM VPS MAKER${RESET}\n"
-            run_script "Vm1"
-            read -rp $'\nPress Enter to return to menu...'
-            ;;
-        2)
-            clear
-            echo -e "${YELLOW}${BOLD}▶ PRITAM NO-KVM VPS MAKER${RESET}\n"
-            run_script "Dd" &&
-            run_script "Vm2"
-            read -rp $'\nPress Enter to return to menu...'
-            ;;
-        0)
-            clear
-            echo -e "${MAGENTA}${BOLD}Thanks for using PRITAM VPS MAKER!${RESET}"
-            exit 0
-            ;;
-        *)
-            echo -e "${RED}❌ Invalid option! Please choose 0, 1, or 2.${RESET}"
-            sleep 1
-            ;;
-    esac
-done
+    echo -ne "  ${CY
