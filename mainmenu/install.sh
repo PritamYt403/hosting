@@ -1,186 +1,127 @@
-
 #!/usr/bin/env bash
 
-# ═══════════════════════════════════════════════════════════
-#          PRITAM HOSTING MANAGEMENT TOOLKIT
-#                 NEON PROFESSIONAL EDITION
-#                     Created by Pritam
-# ═══════════════════════════════════════════════════════════
+# ==========================================
+# PRITAM HOSTING MANAGEMENT TOOLKIT
+# NEON PROFESSIONAL MAIN MENU
+# Created by Pritam
+# ==========================================
+
+BASE="https://raw.githubusercontent.com/PritamYt403/hosting/main"
 
 PURPLE='\033[1;35m'
 CYAN='\033[1;36m'
 GREEN='\033[1;32m'
 RED='\033[1;31m'
 YELLOW='\033[1;33m'
-ORANGE='\033[38;5;208m'
-PINK='\033[38;5;213m'
 WHITE='\033[1;37m'
 GRAY='\033[0;90m'
-RESET='\033[0m'
 BOLD='\033[1m'
+RESET='\033[0m'
 
-BASE="https://raw.githubusercontent.com/PritamYt403/hosting/main"
-
-pause() {
-    echo
-    read -r -p "  Press Enter to continue..." _ || true
-}
+clear
 
 line() {
-    printf '%b\n' "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-}
-
-loading() {
-    local frames=('◐' '◓' '◑' '◒')
-    local i
-
-    for ((i=0; i<12; i++)); do
-        printf '\r%b' "  ${PURPLE}${BOLD}${frames[i%4]}${RESET} ${CYAN}Initializing PRITAM HOSTING...${RESET}"
-        sleep 0.1
-    done
-
-    printf '\r%b\n\n' "  ${GREEN}${BOLD}✔ PRITAM HOSTING READY${RESET}"
+    printf "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n"
 }
 
 header() {
-    clear 2>/dev/null || true
-    echo
-    printf '%b\n' "${PURPLE}${BOLD}"
-
-    cat <<'EOF'
-    ██████╗ ██████╗ ██╗████████╗ █████╗ ███╗   ███╗
-    ██╔══██╗██╔══██╗██║╚══██╔══╝██╔══██╗████╗ ████║
-    ██████╔╝██████╔╝██║   ██║   ███████║██╔████╔██║
-    ██╔═══╝ ██╔══██╗██║   ██║   ██╔══██║██║╚██╔╝██║
-    ██║     ██║  ██║██║   ██║   ██║  ██║██║ ╚═╝ ██║
-    ╚═╝     ╚═╝  ╚═╝╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝
-EOF
-
-    printf '%b\n' "${RESET}"
-    printf '%b\n' "                  ${ORANGE}${BOLD}P R I T A M${RESET}"
-    printf '%b\n' "           ${CYAN}${BOLD}HOSTING MANAGEMENT TOOLKIT${RESET}"
-    printf '%b\n' "                 ${GRAY}Made by Pritam${RESET}"
+    clear
+    line
+    printf "${CYAN}${BOLD}       PRITAM HOSTING MANAGEMENT TOOLKIT${RESET}\n"
+    printf "${GRAY}             NEON PROFESSIONAL EDITION${RESET}\n"
     line
     echo
+}
+
+loading() {
+    printf "${CYAN}Starting toolkit"
+    for i in 1 2 3; do
+        printf "."
+        sleep 0.25
+    done
+    printf "${GREEN} Ready!${RESET}\n"
+    sleep 0.3
+}
+
+pause() {
+    echo
+    read -rp "Press Enter to continue..."
 }
 
 run_command() {
     local url="$1"
-    local script
-    local status
+    local tmp
 
-    script="$(mktemp)" || {
-        printf '%b\n' "  ${RED}✘ Cannot create temporary file.${RESET}"
+    tmp=$(mktemp) || {
+        echo -e "${RED}Unable to create temporary file.${RESET}"
         pause
-        return 1
+        return
     }
 
     echo
-    line
-    printf '%b\n' "  ${CYAN}${BOLD}➤ LAUNCHING SERVICE${RESET}"
-    printf '%b\n' "  ${GRAY}Downloading: ${url}${RESET}"
-    line
+    echo -e "${CYAN}Downloading script...${RESET}"
 
-    if ! curl -fsSL --connect-timeout 10 --max-time 120 "$url" -o "$script"; then
-        printf '\n%b\n' "  ${RED}${BOLD}✘ DOWNLOAD FAILED${RESET}"
-        printf '%b\n' "  ${YELLOW}Check the GitHub file path.${RESET}"
-        rm -f "$script"
+    if ! curl -fLsS "$url" -o "$tmp"; then
+        echo -e "${RED}Download failed. Check the GitHub file path.${RESET}"
+        rm -f "$tmp"
         pause
-        return 1
+        return
     fi
 
-    if [[ ! -s "$script" ]] || ! bash -n "$script"; then
-        printf '\n%b\n' "  ${RED}${BOLD}✘ Script is empty or has a Bash syntax error.${RESET}"
-        rm -f "$script"
+    if [[ ! -s "$tmp" ]] || ! bash -n "$tmp"; then
+        echo -e "${RED}Script is empty or contains a syntax error.${RESET}"
+        rm -f "$tmp"
         pause
-        return 1
+        return
     fi
 
-    printf '%b\n\n' "  ${GREEN}✔ Script syntax verified.${RESET}"
+    echo -e "${GREEN}Launching script...${RESET}"
+    bash "$tmp"
+    local status=$?
 
-    bash "$script"
-    status=$?
+    rm -f "$tmp"
 
-    rm -f "$script"
-
-    if (( status == 0 )); then
-        printf '\n%b\n' "  ${GREEN}✔ Service finished.${RESET}"
-    else
-        printf '\n%b\n' "  ${YELLOW}⚠ Service exited with code ${status}.${RESET}"
+    if [[ $status -ne 0 ]]; then
+        echo -e "${RED}Script exited with error code: $status${RESET}"
     fi
 
-    pause
-    return "$status"
-}
-
-coming_soon() {
-    local frames=('◐' '◓' '◑' '◒')
-    local i
-
-    echo
-    line
-
-    for ((i=0; i<20; i++)); do
-        printf '\r%b' "  ${ORANGE}${BOLD}${frames[i%4]} ${WHITE}COMING SOON${ORANGE} - Preparing something awesome...${RESET}"
-        sleep 0.12
-    done
-
-    echo
-    echo
-    printf '%b\n' "  ${PINK}${BOLD}✦ SYSTEM EDIT ✦${RESET}"
-    printf '%b\n' "  ${CYAN}This feature is currently under development.${RESET}"
-    printf '%b\n' "  ${YELLOW}Please check back later!${RESET}"
-    line
     pause
 }
 
 main_menu() {
-    local choice
-
     while true; do
         header
 
-        printf '%b\n' "  ${WHITE}${BOLD}╭──────────────── MAIN MENU ────────────────╮${RESET}"
-        printf '%b\n' "  ${PURPLE}${BOLD}  [A]${RESET} ${WHITE}Pterodactyl Management${RESET}"
-        printf '%b\n' "  ${CYAN}${BOLD}  [B]${RESET} ${WHITE}VPS Maker${RESET}"
-        printf '%b\n' "  ${ORANGE}${BOLD}  [C]${RESET} ${YELLOW}System Edit ${GRAY}(COMING SOON)${RESET}"
-        printf '%b\n' "  ${RED}${BOLD}  [D]${RESET} ${WHITE}Exit Toolkit${RESET}"
-        printf '%b\n' "  ${WHITE}${BOLD}╰────────────────────────────────────────────╯${RESET}"
-        echo
+        printf " ${GREEN}[1]${RESET} Pterodactyl Management\n"
+        printf " ${YELLOW}[2]${RESET} VPS Maker ${GRAY}(Coming Soon)${RESET}\n"
+        printf " ${CYAN}[3]${RESET} System Information ${GRAY}(Coming Soon)${RESET}\n"
+        printf " ${RED}[0]${RESET} Exit\n"
 
-        read -r -p "$(printf '%b' "${PINK}${BOLD}  PRITAM ${CYAN}» ${RESET}")" choice || exit 0
+        echo
+        line
+        read -rp " Select option [0-3]: " choice
 
         case "$choice" in
-            A|a)
+            1)
                 run_command "${BASE}/pterodactyl/install.sh"
                 ;;
-            B|b)
-                run_command "${BASE}/vps-maker/vps-maker.sh"
-                ;;
-            C|c)
-                coming_soon
-                ;;
-            D|d)
+            2|3)
                 echo
-                line
-                printf '%b\n' "  ${PINK}${BOLD}Thank you for using PRITAM HOSTING!${RESET}"
-                printf '%b\n' "  ${CYAN}Made by Pritam. Goodbye!${RESET}"
-                line
+                echo -e "${YELLOW}This feature will be connected later.${RESET}"
+                pause
+                ;;
+            0)
+                echo
+                echo -e "${GREEN}Thank you for using Pritam Hosting Toolkit!${RESET}"
                 exit 0
                 ;;
             *)
-                printf '\n%b\n' "  ${RED}✘ Invalid option! Choose A, B, C or D.${RESET}"
+                echo -e "${RED}Invalid option! Try again.${RESET}"
                 sleep 1
                 ;;
         esac
     done
 }
-
-if ! command -v curl >/dev/null 2>&1; then
-    printf '%b\n' "${RED}curl is required.${RESET}"
-    echo "Install curl using your system package manager."
-    exit 1
-fi
 
 loading
 main_menu
