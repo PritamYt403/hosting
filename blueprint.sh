@@ -48,7 +48,7 @@ main_menu() {
         read -rp "📝 Select an option [0-2]: " choice || return 0
 
         case "$choice" in
-            1) blueprint_setup ;;
+            1) blueprint-install.sh ;;
             2) themes_menu ;;
             0) return 0 ;;
             *)
