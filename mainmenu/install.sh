@@ -1,10 +1,12 @@
 
 #!/usr/bin/env bash
 
-# ═════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════
 #          PRITAM HOSTING MANAGEMENT TOOLKIT
-#                  Professional Edition
-# ═════════════════════════════════════════════════════
+#                   NEON PROFESSIONAL
+# ═══════════════════════════════════════════════════════
+
+set -o pipefail
 
 PURPLE='\033[1;35m'
 CYAN='\033[1;36m'
@@ -26,29 +28,26 @@ pause() {
 }
 
 line() {
-    echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    printf "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n"
 }
 
-run_command() {
-    local url="$1"
+loading() {
+    local frames=('◐' '◓' '◑' '◒')
+    local i
 
-    echo
-    line
-    echo -e "${CYAN}${BOLD}  Starting selected service...${RESET}"
-    line
-    echo
+    printf "\n  ${CYAN}${BOLD}Initializing PRITAM HOSTING${RESET} "
 
-    if ! bash <(curl -fsSL --connect-timeout 10 "$url"); then
-        echo
-        echo -e "${RED}  [ERROR] Command failed!${RESET}"
-        echo -e "${YELLOW}  Check the URL and internet connection.${RESET}"
-    fi
+    for ((i=0; i<12; i++)); do
+        printf "\r  ${PURPLE}${BOLD}${frames[i%4]}${RESET} ${CYAN}Initializing PRITAM HOSTING...${RESET}"
+        sleep 0.10
+    done
 
-    pause
+    printf "\r  ${GREEN}${BOLD}✔ PRITAM HOSTING READY                         ${RESET}\n\n"
 }
 
 header() {
     clear 2>/dev/null || true
+
     echo
     echo -e "${PURPLE}${BOLD}"
     cat <<'EOF'
@@ -60,12 +59,63 @@ header() {
     ╚═╝     ╚═╝  ╚═╝╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝
 EOF
     echo -e "${RESET}"
+
     echo -e "             ${ORANGE}${BOLD}P R I T A M${RESET}"
     echo -e "       ${CYAN}${BOLD}HOSTING MANAGEMENT TOOLKIT${RESET}"
-    echo -e "             ${PINK}Professional Edition${RESET}"
-    echo -e "                ${GRAY}Made by Pritam${RESET}"
+    echo -e "          ${PINK}✦ NEON PROFESSIONAL EDITION ✦${RESET}"
+    echo -e "                ${GRAY}Created by Pritam${RESET}"
+
     line
     echo
+}
+
+run_command() {
+    local url="$1"
+    local script
+    local status
+
+    script="$(mktemp)" || {
+        echo -e "${RED}  ✘ Cannot create temporary file.${RESET}"
+        pause
+        return 1
+    }
+
+    echo
+    line
+    echo -e "  ${CYAN}${BOLD}➤ LAUNCHING SERVICE${RESET}"
+    echo -e "  ${GRAY}Downloading selected script...${RESET}"
+    line
+
+    if ! curl -fsSL --connect-timeout 10 --max-time 120 "$url" -o "$script"; then
+        echo -e "\n  ${RED}${BOLD}✘ DOWNLOAD FAILED${RESET}"
+        echo -e "  ${YELLOW}Check the URL or internet connection.${RESET}"
+        rm -f "$script"
+        pause
+        return 1
+    fi
+
+    if [[ ! -s "$script" ]] || ! bash -n "$script"; then
+        echo -e "\n  ${RED}${BOLD}✘ Invalid script or Bash syntax error.${RESET}"
+        rm -f "$script"
+        pause
+        return 1
+    fi
+
+    echo -e "  ${GREEN}✔ Script downloaded and syntax checked.${RESET}"
+    echo
+
+    bash "$script"
+    status=$?
+
+    rm -f "$script"
+
+    if (( status == 0 )); then
+        echo -e "\n  ${GREEN}${BOLD}✔ SERVICE FINISHED${RESET}"
+    else
+        echo -e "\n  ${YELLOW}${BOLD}⚠ SERVICE EXITED WITH CODE ${status}${RESET}"
+    fi
+
+    pause
 }
 
 main_menu() {
@@ -74,44 +124,40 @@ main_menu() {
     while true; do
         header
 
-        echo -e "  ${WHITE}${BOLD}╭────────────── MAIN MENU ──────────────╮${RESET}"
-        echo -e "  ${PURPLE} [A]${RESET} ${WHITE}Pterodactyl Management${RESET}"
-        echo -e "  ${CYAN} [B]${RESET} ${WHITE}VPS Maker${RESET}"
-        echo -e "  ${GREEN} [C]${RESET} ${WHITE}Tools & Utilities${RESET}"
-        echo -e "  ${ORANGE}[D]${RESET} ${WHITE}System Edit${RESET}"
-        echo -e "  ${RED} [E]${RESET} ${WHITE}Exit Toolkit${RESET}"
-        echo -e "  ${WHITE}${BOLD}╰──────────────────────────────────────╯${RESET}"
+        echo -e "  ${WHITE}${BOLD}╭──────────────── MAIN MENU ────────────────╮${RESET}"
+        echo -e "  ${PURPLE}${BOLD}  [A]${RESET} ${WHITE}Pterodactyl Management${RESET}"
+        echo -e "  ${CYAN}${BOLD}  [B]${RESET} ${WHITE}VPS Maker${RESET}"
+        echo -e "  ${GREEN}${BOLD}  [C]${RESET} ${WHITE}Tools & Utilities${RESET}"
+        echo -e "  ${ORANGE}${BOLD}  [D]${RESET} ${WHITE}System Edit${RESET}"
+        echo -e "  ${RED}${BOLD}  [E]${RESET} ${WHITE}Exit Toolkit${RESET}"
+        echo -e "  ${WHITE}${BOLD}╰────────────────────────────────────────────╯${RESET}"
         echo
 
-        read -rp "$(echo -e "${PINK}  PRITAM ${CYAN}» ${RESET}")" choice
+        read -rp "$(echo -e "${PINK}${BOLD}  PRITAM ${CYAN}» ${RESET}")" choice
 
         case "$choice" in
             A|a)
-                run_command \
-                    "${REPO}/pterodactyl/main/install.sh"
+                run_command "${REPO}/pterodactyl/main/install.sh"
                 ;;
             B|b)
-                run_command \
-                    "${REPO}/hosting/main/mainmanu/vps-maker.sh"
+                run_command "${REPO}/hosting/main/mainmanu/vps-maker.sh"
                 ;;
             C|c)
-                run_command \
-                    "${REPO}/hosting/main/mainmanu/tools.sh"
+                run_command "${REPO}/hosting/main/mainmanu/tools.sh"
                 ;;
             D|d)
-                run_command \
-                    "${REPO}/hosting/main/mainmanu/system-edit.sh"
+                run_command "${REPO}/hosting/main/mainmanu/system-edit.sh"
                 ;;
             E|e)
                 echo
                 line
-                echo -e "${PINK}${BOLD}  Thank you for using PRITAM!${RESET}"
-                echo -e "${CYAN}  Made by Pritam. Goodbye!${RESET}"
+                echo -e "  ${PINK}${BOLD}✦ THANK YOU FOR USING PRITAM HOSTING ✦${RESET}"
+                echo -e "  ${CYAN}          Made with care by Pritam${RESET}"
                 line
                 exit 0
                 ;;
             *)
-                echo -e "${RED}  Invalid option! Choose A-E.${RESET}"
+                echo -e "\n  ${RED}✘ Invalid option! Choose A, B, C, D or E.${RESET}"
                 sleep 1
                 ;;
         esac
@@ -119,9 +165,10 @@ main_menu() {
 }
 
 if ! command -v curl >/dev/null 2>&1; then
-    echo -e "${RED}curl is required to run this toolkit.${RESET}"
+    echo -e "${RED}curl is required.${RESET}"
     echo "Install: sudo apt-get update && sudo apt-get install -y curl"
     exit 1
 fi
 
+loading
 main_menu
