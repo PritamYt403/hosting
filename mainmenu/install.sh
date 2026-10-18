@@ -59,7 +59,7 @@ EOF
     printf '%b\n' "${RESET}"
     printf '%b\n' "                  ${ORANGE}${BOLD}P R I T A M${RESET}"
     printf '%b\n' "           ${CYAN}${BOLD}HOSTING MANAGEMENT TOOLKIT${RESET}"
-    printf '%b\n' "           ${PINK}✦ NEON PROFESSIONAL EDITION ✦${RESET}"
+    printf '%b\n' "             ${PINK}✦ NEON PROFESSIONAL EDITION ✦${RESET}"
     printf '%b\n' "                 ${GRAY}Made by Pritam${RESET}"
     line
     echo
@@ -185,3 +185,4 @@ fi
 
 loading
 main_menu
+
