@@ -1,15 +1,15 @@
 
 #!/usr/bin/env bash
 
-# ═════════════════════════════════════════════════════
-#             PRITAM VPS MANAGEMENT TOOLKIT
-#                  Professional Edition
-# ═════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════
+#             PRITAM HOSTING MANAGEMENT
+#                  PROFESSIONAL EDITION
+#                    Made by Pritam
+# ═══════════════════════════════════════════════════════
 
 set -o pipefail
 
-BASE="https://raw.githubusercontent.com/PritamYt403/pterodactyl/main"
-
+# ── COLORS ─────────────────────────────────────────────
 PURPLE='\033[1;35m'
 BLUE='\033[1;34m'
 CYAN='\033[1;36m'
@@ -17,28 +17,36 @@ GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
 RED='\033[1;31m'
 WHITE='\033[1;37m'
-GRAY='\033[0;37m'
+GRAY='\033[0;90m'
 ORANGE='\033[38;5;208m'
 PINK='\033[38;5;213m'
 RESET='\033[0m'
 BOLD='\033[1m'
+
+# ── GITHUB COMMANDS ────────────────────────────────────
+PTERODACTYL_URL="https://raw.githubusercontent.com/PritamYt403/pterodactyl/main/install.sh"
+
+HOSTING_BASE="https://raw.githubusercontent.com/PritamYt403/hosting/main/mainmanu"
+
+# ── HELPERS ────────────────────────────────────────────
 
 pause() {
     echo
     read -rp "  Press Enter to continue..." _
 }
 
-loading() {
-    printf "\n  ${PURPLE}${BOLD}Initializing"
-    for _ in 1 2 3 4 5; do
-        printf "${CYAN} ◆"
-        sleep 0.10
-    done
-    printf "${RESET}\n\n"
+line() {
+    printf "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n"
 }
 
-line() {
-    echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+loading() {
+    printf "\n  ${PURPLE}${BOLD}Initializing Hosting Manager${RESET} "
+    for _ in 1 2 3 4 5; do
+        printf "${CYAN}◆ ${RESET}"
+        sleep 0.10
+    done
+    echo
+    echo
 }
 
 header() {
@@ -55,67 +63,41 @@ header() {
     ╚═╝     ╚═╝  ╚═╝╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝
 EOF
     echo -e "${RESET}"
-
-    echo -e "        ${ORANGE}${BOLD}P R I T A M${RESET}"
-    echo -e "     ${CYAN}${BOLD}VPS MANAGEMENT TOOLKIT${RESET}"
-    echo -e "        ${PINK}Made by Pritam${RESET}"
+    echo -e "             ${ORANGE}${BOLD}P R I T A M${RESET}"
+    echo -e "       ${CYAN}${BOLD}HOSTING MANAGEMENT TOOLKIT${RESET}"
+    echo -e "             ${PINK}Professional Edition${RESET}"
+    echo -e "                ${GRAY}Made by Pritam${RESET}"
     line
     echo
 }
 
-run_module() {
-    local file="$1"
-    local tmp
-    local url="${BASE}/${file}"
-    local result=0
+# ── DIRECT BASH COMMAND RUNNER ─────────────────────────
 
-    tmp="$(mktemp)" || {
-        echo -e "${RED}  [ERROR] Cannot create temporary file.${RESET}"
-        pause
-        return 1
-    }
+run_command() {
+    local url="$1"
 
     echo
-    echo -e "${CYAN}  ◈ MODULE  ${WHITE}${BOLD}${file}${RESET}"
-    echo -e "${GRAY}  Downloading latest version from GitHub...${RESET}"
+    line
+    echo -e "${CYAN}${BOLD}  Starting selected service...${RESET}"
+    echo -e "${GRAY}  Source: ${url}${RESET}"
+    line
+    echo
 
-    if ! curl -fsSL --connect-timeout 10 --max-time 60 \
-        "$url" -o "$tmp"; then
-        echo -e "${RED}  ✗ Download failed: ${file}${RESET}"
-        echo -e "${YELLOW}  Check the filename and GitHub main branch.${RESET}"
-        rm -f "$tmp"
+    if ! curl -fsSL --connect-timeout 10 --max-time 60 "$url" |
+        bash; then
+        echo
+        echo -e "${RED}${BOLD}  [ERROR] Command failed.${RESET}"
+        echo -e "${YELLOW}  Check the URL, internet connection and script.${RESET}"
         pause
         return 1
     fi
 
-    if [[ ! -s "$tmp" ]] || ! bash -n "$tmp"; then
-        echo -e "${RED}  ✗ Empty file or Bash syntax error.${RESET}"
-        rm -f "$tmp"
-        pause
-        return 1
-    fi
-
-    echo -e "${GREEN}  ✓ Script verified successfully.${RESET}"
-    echo -e "${GRAY}  ──────────────────────────────────────────────────${RESET}"
     echo
-
-    bash "$tmp" || result=$?
-    rm -f "$tmp"
-
-    echo
-    if (( result == 0 )); then
-        echo -e "${GREEN}  ✓ Module completed.${RESET}"
-    else
-        echo -e "${YELLOW}  ! Module exited with code ${result}.${RESET}"
-    fi
-
+    echo -e "${GREEN}${BOLD}  [DONE] Command finished.${RESET}"
     pause
-    return "$result"
 }
 
-run_system_info() {
-    run_module "system-info.sh"
-}
+# ── PANEL MANAGEMENT ───────────────────────────────────
 
 panel_menu() {
     local choice
@@ -123,35 +105,37 @@ panel_menu() {
     while true; do
         header
 
-        echo -e "  ${WHITE}${BOLD}╭──────────── PANEL MANAGEMENT ────────────╮${RESET}"
-        echo -e "  ${CYAN}  [1]${RESET} ${WHITE}Panel Installation${RESET}"
-        echo -e "  ${BLUE}  [2]${RESET} ${WHITE}Wings Installation${RESET}"
-        echo -e "  ${RED}   [3]${RESET} ${WHITE}Uninstall Tools${RESET}"
-        echo -e "  ${PURPLE} [4]${RESET} ${WHITE}Blueprint / Themes / Extensions${RESET}"
-        echo -e "  ${ORANGE} [5]${RESET} ${WHITE}Cloudflare Tunnel Connect${RESET}"
-        echo -e "  ${GREEN}  [6]${RESET} ${WHITE}${BOLD}System Information${RESET}"
-        echo -e "  ${CYAN}  [7]${RESET} ${WHITE}Tailscale Setup${RESET}"
-        echo -e "  ${BLUE}  [8]${RESET} ${WHITE}Database Setup${RESET}"
-        echo -e "  ${RED}   [9]${RESET} ${GRAY}Back to Main Menu${RESET}"
-        echo -e "  ${WHITE}${BOLD}╰──────────────────────────────────────────╯${RESET}"
+        echo -e "  ${WHITE}${BOLD}╭────────── PANEL MANAGEMENT ──────────╮${RESET}"
+        echo -e "  ${CYAN} [1]${RESET} Pterodactyl Installer"
+        echo -e "  ${BLUE} [2]${RESET} Wings Installer"
+        echo -e "  ${RED} [3]${RESET} Uninstall Tools"
+        echo -e "  ${PURPLE}[4]${RESET} Blueprint / Themes / Extensions"
+        echo -e "  ${ORANGE}[5]${RESET} Cloudflare Tunnel"
+        echo -e "  ${GREEN} [6]${RESET} System Information"
+        echo -e "  ${CYAN} [7]${RESET} Tailscale Setup"
+        echo -e "  ${BLUE} [8]${RESET} Database Setup"
+        echo -e "  ${RED} [9]${RESET} Back to Main Menu"
+        echo -e "  ${WHITE}${BOLD}╰─────────────────────────────────────╯${RESET}"
         echo
 
         read -rp "$(echo -e "${PINK}  PRITAM ${CYAN}» ${RESET}")" choice
 
         case "$choice" in
-            1) run_module "panel.sh" ;;
-            2) run_module "wings.sh" ;;
-            3) run_module "uninstall.sh" ;;
-            4) run_module "blueprint.sh" ;;
-            5) run_module "cloudflare.sh" ;;
-            6) run_system_info ;;
-            7) run_module "tailscale.sh" ;;
-            8) run_module "database.sh" ;;
+            1) run_command "$PTERODACTYL_URL" ;;
+            2) run_command "${HOSTING_BASE}/wings.sh" ;;
+            3) run_command "${HOSTING_BASE}/uninstall.sh" ;;
+            4) run_command "${HOSTING_BASE}/blueprint.sh" ;;
+            5) run_command "${HOSTING_BASE}/cloudflare.sh" ;;
+            6) run_command "${HOSTING_BASE}/system-info.sh" ;;
+            7) run_command "${HOSTING_BASE}/tailscale.sh" ;;
+            8) run_command "${HOSTING_BASE}/database.sh" ;;
             9) return ;;
-            *) echo -e "\n${RED}  ✗ Invalid option. Choose 1-9.${RESET}"; sleep 1 ;;
+            *) echo -e "\n${RED}  Invalid option. Choose 1-9.${RESET}"; sleep 1 ;;
         esac
     done
 }
+
+# ── MAIN MENU ──────────────────────────────────────────
 
 main_menu() {
     local choice
@@ -160,43 +144,56 @@ main_menu() {
         header
 
         echo -e "  ${WHITE}${BOLD}╭────────────── MAIN MENU ──────────────╮${RESET}"
-        echo -e "  ${PURPLE}  [A]${RESET} ${WHITE}Panel Management${RESET}"
-        echo -e "  ${CYAN}  [B]${RESET} ${WHITE}VPS Maker${RESET}"
-        echo -e "  ${GREEN}  [C]${RESET} ${WHITE}Tools & Utilities${RESET}"
-        echo -e "  ${ORANGE} [D]${RESET} ${WHITE}System Edit${RESET}"
-        echo -e "  ${RED}   [E]${RESET} ${WHITE}Exit Toolkit${RESET}"
-        echo -e "  ${WHITE}${BOLD}╰────────────────────────────────────────╯${RESET}"
+        echo -e "  ${PURPLE} [A]${RESET} ${WHITE}Pterodactyl Management${RESET}"
+        echo -e "  ${CYAN} [B]${RESET} ${WHITE}Hosting Manager${RESET}"
+        echo -e "  ${GREEN} [C]${RESET} ${WHITE}Tools & Utilities${RESET}"
+        echo -e "  ${ORANGE}[D]${RESET} ${WHITE}System Settings${RESET}"
+        echo -e "  ${RED} [E]${RESET} ${WHITE}Exit Toolkit${RESET}"
+        echo -e "  ${WHITE}${BOLD}╰──────────────────────────────────────╯${RESET}"
         echo
 
         read -rp "$(echo -e "${PINK}  PRITAM ${CYAN}» ${RESET}")" choice
 
         case "$choice" in
-            A|a) loading; panel_menu ;;
-            B|b) run_module "vps-maker.sh" ;;
-            C|c) run_module "tools.sh" ;;
-            D|d) run_module "system-edit.sh" ;;
+            A|a)
+                loading
+                panel_menu
+                ;;
+            B|b)
+                run_command "${HOSTING_BASE}/vps-maker.sh"
+                ;;
+            C|c)
+                run_command "${HOSTING_BASE}/tools.sh"
+                ;;
+            D|d)
+                run_command "${HOSTING_BASE}/system-edit.sh"
+                ;;
             E|e)
                 echo
                 line
-                echo -e "  ${PINK}${BOLD}Thank you for using PRITAM Toolkit!${RESET}"
+                echo -e "  ${PINK}${BOLD}Thank you for using PRITAM Hosting Management!${RESET}"
                 echo -e "  ${CYAN}Made by Pritam. Goodbye!${RESET}"
                 line
                 exit 0
                 ;;
-            *) echo -e "\n${RED}  ✗ Invalid option. Choose A-E.${RESET}"; sleep 1 ;;
+            *)
+                echo -e "\n${RED}  Invalid option. Choose A-E.${RESET}"
+                sleep 1
+                ;;
         esac
     done
 }
 
-# Startup dependency check
+# ── STARTUP CHECK ──────────────────────────────────────
+
 if ! command -v curl >/dev/null 2>&1; then
-    echo -e "${RED}curl is required to download modules.${RESET}"
-    echo "Install using: sudo apt-get update && sudo apt-get install -y curl"
+    echo -e "${RED}curl is required.${RESET}"
+    echo "Install: sudo apt-get update && sudo apt-get install -y curl"
     exit 1
 fi
 
 loading
-echo -e "${GREEN}${BOLD}  ✓ PRITAM Toolkit loaded successfully!${RESET}"
+echo -e "${GREEN}${BOLD}  [OK] PRITAM Hosting Management loaded!${RESET}"
 sleep 1
 
 main_menu
