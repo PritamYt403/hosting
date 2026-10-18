@@ -144,8 +144,8 @@ main_menu() {
         printf '%b\n' "  ${WHITE}${BOLD}╭──────────────── MAIN MENU ────────────────╮${RESET}"
         printf '%b\n' "  ${PURPLE}${BOLD}  [A]${RESET} ${WHITE}Pterodactyl Management${RESET}"
         printf '%b\n' "  ${CYAN}${BOLD}  [B]${RESET} ${WHITE}VPS Maker${RESET}"
-        printf '%b\n' "  ${ORANGE}${BOLD}  [D]${RESET} ${YELLOW}System Edit ${GRAY}(COMING SOON)${RESET}"
-        printf '%b\n' "  ${RED}${BOLD}  [E]${RESET} ${WHITE}Exit Toolkit${RESET}"
+        printf '%b\n' "  ${ORANGE}${BOLD}  [C]${RESET} ${YELLOW}System Edit ${GRAY}(COMING SOON)${RESET}"
+        printf '%b\n' "  ${RED}${BOLD}  [D]${RESET} ${WHITE}Exit Toolkit${RESET}"
         printf '%b\n' "  ${WHITE}${BOLD}╰────────────────────────────────────────────╯${RESET}"
         echo
 
@@ -158,10 +158,10 @@ main_menu() {
             B|b)
                 run_command "${BASE}/hosting/main/mainmenu/vps-maker.sh"
                 ;;
-            D|d)
+            C|c)
                 coming_soon
                 ;;
-            E|e)
+            D|d)
                 echo
                 line
                 printf '%b\n' "  ${PINK}${BOLD}Thank you for using PRITAM HOSTING!${RESET}"
@@ -170,7 +170,7 @@ main_menu() {
                 exit 0
                 ;;
             *)
-                printf '\n%b\n' "  ${RED}✘ Invalid option! Choose A, B, D or E.${RESET}"
+                printf '\n%b\n' "  ${RED}✘ Invalid option! Choose A, B, C or D.${RESET}"
                 sleep 1
                 ;;
         esac
