@@ -63,8 +63,7 @@ Some modules may have additional dependencies.
 
 Review the script on GitHub before executing it, especially if you intend to use root privileges.
 
-```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/PritamYt403/hosting/main/mainmenu/install.sh)
+```bash <(curl -fsSL https://raw.githubusercontent.com/PritamYt403/hosting/main/mainmenu/install.sh)
 ```
 
 ### Option 2 — Clone the repository
@@ -84,8 +83,7 @@ bash mainmenu/install.sh
 
 To check the downloaded main menu script without running it:
 
-```bash
-bash -n <(curl -fsSL https://raw.githubusercontent.com/PritamYt403/hosting/main/mainmenu/install.sh)
+```bash <(curl -fsSL https://raw.githubusercontent.com/PritamYt403/hosting/main/mainmenu/install.sh)
 ```
 
 No output usually means the script passed Bash syntax validation. This does not guarantee that every module will run successfully.
