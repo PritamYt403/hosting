@@ -1,96 +1,73 @@
-#!/bin/bash
 
-# ==========================================
-# COLOR & STYLE DEFINITIONS
-# ==========================================
-RESET="\e[0m"
-BOLD="\e[1m"
-DIM="\e[2m"
+#!/usr/bin/env bash
 
-# Colors
-RED="\e[31m"
-GREEN="\e[32m"
-YELLOW="\e[33m"
-BLUE="\e[34m"
-MAGENTA="\e[35m"
-CYAN="\e[36m"
-WHITE="\e[37m"
+# ==============================================
+#       PRITAM VPS MAKER - ENVIRONMENT TOOL
+#                    VERSION 26.1
+# ==============================================
 
-# ==========================================
-# UI FUNCTIONS
-# ==========================================
+RESET='\033[0m'
+BOLD='\033[1m'
+DIM='\033[2m'
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[1;34m'
+MAGENTA='\033[1;35m'
+CYAN='\033[1;36m'
+WHITE='\033[1;37m'
 
-print_menu() {
+print_header() {
     clear
-    # ASCII Banner
-    echo -e "${GREEN}${BOLD}"
-    echo -e "   ██████  ██████   ██████   █████  ███    ███ ███████ ██████  "
-    echo -e "  ██       ██   ██ ██       ██   ██ ████  ████ ██      ██   ██ "
-    echo -e "   █████   ██   ██ ██   ███ ███████ ██ ████ ██ █████   ██████  "
-    echo -e "       ██  ██   ██ ██    ██ ██   ██ ██  ██  ██ ██      ██   ██ "
-    echo -e "   ██████  ██████   ██████  ██   ██ ██      ██ ███████ ██   ██ "
-    echo -e "${RESET}\n"
-
-    # Main Menu Box
-    echo -e "${CYAN}  ╭──────────────────────────────────────────────────────╮${RESET}"
-    echo -e "${CYAN}  │${BOLD}${WHITE}        D E V E L O P M E N T   M E N U  (V26.1)      ${CYAN}│${RESET}"
-    echo -e "${CYAN}  ├──────────────────────────────────────────────────────┤${RESET}"
-    echo -e "${CYAN}  │                                                      │${RESET}"
-    echo -e "${CYAN}  │   ${GREEN}[1]${RESET} Environment Tool                               ${CYAN}│${RESET}"
-    echo -e "${CYAN}  │   ${YELLOW}[2]${RESET} Run Virtual Machine Installer (KVM)            ${CYAN}│${RESET}"
-    echo -e "${CYAN}  │   ${BLUE}[3]${RESET} Run Virtual Machine Installer (No KVM)         ${CYAN}│${RESET}"
-    echo -e "${CYAN}  │   ${MAGENTA}[4]${RESET} Proxmox Setup                                  ${CYAN}│${RESET}"
-    echo -e "${CYAN}  │   ${RED}[5]${RESET} Exit                                           ${CYAN}│${RESET}"
-    echo -e "${CYAN}  │                                                      │${RESET}"
-    echo -e "${CYAN}  ╰──────────────────────────────────────────────────────╯${RESET}"
-    echo -e ""
+    printf '\n%b\n' "${GREEN}${BOLD}"
+    printf '%s\n' "  ██████  ██████   ██████   █████  ███    ███"
+    printf '%s\n' "  ██      ██   ██ ██       ██   ██ ████  ████"
+    printf '%s\n' "   █████  ██   ██ ██   ███ ███████ ██ ████ ██"
+    printf '%s\n' "       ██ ██   ██ ██    ██ ██   ██ ██  ██  ██"
+    printf '%s\n' "  ██████  ██████   ██████  ██   ██ ██      ██"
+    printf '%b\n' "${RESET}"
+    printf '%b\n' "${CYAN}  ╭──────────────────────────────────────────────────────╮${RESET}"
+    printf '%b\n' "${CYAN}  │${WHITE}${BOLD}              ENVIRONMENT TOOL V26.1                 ${CYAN}│${RESET}"
+    printf '%b\n' "${CYAN}  ├──────────────────────────────────────────────────────┤${RESET}"
+    printf '%b\n' "${CYAN}  │${WHITE}  Configure the development workspace safely         ${CYAN}│${RESET}"
+    printf '%b\n\n' "${CYAN}  ╰──────────────────────────────────────────────────────╯${RESET}"
 }
 
-print_status() {
-    local text="$1"
-    local color="$2"
-    echo -e "\n  ${color}${BOLD}▶ ${text}${RESET}\n"
+pause() {
+    printf '\n'
+    read -r -p "  ↩ Press Enter to return..." _
 }
 
-print_divider() {
-    echo -e "  ${DIM}────────────────────────────────────────────────────────${RESET}"
-}
+setup_environment() {
+    local workspace="$HOME/vm/.idx"
+    local config="$workspace/dev.nix"
+    local temp
 
-# ==========================================
-# MAIN LOOP
-# ==========================================
+    printf '\n%b\n' "${CYAN}▶ Preparing environment...${RESET}"
 
-while true; do
-    print_menu
-    
-    # Sleek prompt
-    echo -ne "  ${CYAN}▶${RESET} ${BOLD}Select Option:${RESET} "
-    read -p "" op
-    
-    case $op in
-    
-    # ---------------------------------------------------------
-    # (1) Environment Setup TOOL
-    # ---------------------------------------------------------
-    1)
-        clear
-        print_status "🔧 Running Environment Tool Setup..." "$GREEN"
-        print_divider
-        
-        echo -e "  ${CYAN}🧹 Cleaning up old files...${RESET}"
-        cd ~ || exit
-        rm -rf myapp flutter
-        
-        # Ensure vm directory exists before cd
-        mkdir -p vm && cd vm || exit
-        
-        if [ ! -d ".idx" ]; then
-            echo -e "  ${GREEN}📁 Creating .idx directory...${RESET}"
-            mkdir .idx
-            cd .idx || exit
-            
-            echo -e "  ${CYAN}📝 Creating dev.nix configuration...${RESET}"
-            cat <<EOF > dev.nix
+    if ! command -v mkdir >/dev/null 2>&1; then
+        printf '%b\n' "${RED}✘ mkdir is unavailable.${RESET}"
+        return 1
+    fi
+
+    if ! mkdir -p "$workspace"; then
+        printf '%b\n' "${RED}✘ Could not create: $workspace${RESET}"
+        return 1
+    fi
+
+    # Keep an existing configuration instead of overwriting it.
+    if [ -f "$config" ]; then
+        printf '\n%b\n' "${YELLOW}⚠ dev.nix already exists; leaving it unchanged.${RESET}"
+        printf '%b\n' "${CYAN}Location: $config${RESET}"
+        return 0
+    fi
+
+    temp="$(mktemp "$workspace/dev.nix.tmp.XXXXXX")" || {
+        printf '%b\n' "${RED}✘ Could not create temporary configuration.${RESET}"
+        return 1
+    }
+
+    if ! cat > "$temp" <<'EOF'
 { pkgs, ... }: {
   channel = "stable-24.05";
 
@@ -126,85 +103,58 @@ while true; do
   };
 }
 EOF
-            
-            echo -e "\n  ${GREEN}${BOLD}✅ Tool setup complete!${RESET}"
-            echo -e "  ${CYAN}╭──────────────────────────────────────╮${RESET}"
-            echo -e "  ${CYAN}│${RESET} ${DIM}Status:${RESET}   ${GREEN}Ready to use${RESET}             ${CYAN}│${RESET}"
-            echo -e "  ${CYAN}│${RESET} ${DIM}Location:${RESET} ${YELLOW}~/vm/.idx${RESET}                ${CYAN}│${RESET}"
-            echo -e "  ${CYAN}╰──────────────────────────────────────╯${RESET}"
-        else
-            echo -e "  ${YELLOW}⚠ Directory .idx already exists — skipping.${RESET}"
-        fi
-        
-        echo -e ""
-        print_divider
-        read -p "  ↩ Press Enter to return..."
-        ;;
-    
-    # ---------------------------------------------------------
-    # (2) Run VM1 Kvm
-    # ---------------------------------------------------------
-    2)
-        clear
-        print_status "🌐 Starting IDX VM (KVM) From GitHub..." "$YELLOW"
-        print_divider
-        
-        echo -e "  ${CYAN}📡 Fetching script...${RESET}"
-        bash <(curl -s https://raw.githubusercontent.com/sdgamer8263-sketch/VPS/main/Vm1)
-        
-        echo -e ""
-        print_divider
-        read -p "  ↩ Press Enter to return..."
-        ;;
+    then
+        rm -f "$temp"
+        printf '%b\n' "${RED}✘ Failed to write dev.nix.${RESET}"
+        return 1
+    fi
 
-    # ---------------------------------------------------------
-    # (3) Run VM2 No KVM
-    # ---------------------------------------------------------
-    3)
-        clear
-        print_status "🌐 Starting VM (No KVM) From GitHub..." "$BLUE"
-        print_divider
-        
-        echo -e "  ${CYAN}📡 Fetching scripts...${RESET}"
-        bash <(curl -s https://raw.githubusercontent.com/sdgamer8263-sketch/VPS/main/Dd)
-        bash <(curl -s https://raw.githubusercontent.com/sdgamer8263-sketch/VPS/main/Vm2)
-        
-        echo -e ""
-        print_divider
-        read -p "  ↩ Press Enter to return..."
-        ;;
+    if ! mv "$temp" "$config"; then
+        rm -f "$temp"
+        printf '%b\n' "${RED}✘ Could not save dev.nix.${RESET}"
+        return 1
+    fi
 
-    # ---------------------------------------------------------
-    # (4) Proxmox Setup
-    # ---------------------------------------------------------
-    4)
-        clear
-        print_status "🌐 Starting Proxmox Setup From GitHub..." "$MAGENTA"
-        print_divider
-        
-        echo -e "  ${CYAN}📡 Fetching script...${RESET}"
-        bash <(curl -s https://raw.githubusercontent.com/sdgamer8263-sketch/VPS/main/Proxmox)
-        
-        echo -e ""
-        print_divider
-        read -p "  ↩ Press Enter to return..."
-        ;;  
+    printf '\n%b\n' "${GREEN}${BOLD}✔ Environment configuration created!${RESET}"
+    printf '%b\n' "${CYAN}  ┌──────────────────────────────────────┐${RESET}"
+    printf '%b\n' "${CYAN}  │${WHITE} Status:   ${GREEN}Configuration ready${CYAN}      │${RESET}"
+    printf '%b\n' "${CYAN}  │${WHITE} Location: ${YELLOW}~/vm/.idx/dev.nix${CYAN}       │${RESET}"
+    printf '%b\n' "${CYAN}  └──────────────────────────────────────┘${RESET}"
+    printf '\n%b\n' "${YELLOW}Note: Packages are installed by the supported IDX/Nix environment, not by this script itself.${RESET}"
+}
 
-    # ---------------------------------------------------------
-    # (5) EXIT
-    # ---------------------------------------------------------
-    5)
-        clear
-        echo -e "\n  ${CYAN}╭──────────────────────────────────────────────────────╮${RESET}"
-        echo -e "  ${CYAN}│${RESET}${BOLD}${WHITE}                     E X I T I N G                    ${CYAN}│${RESET}"
-        echo -e "  ${CYAN}╰──────────────────────────────────────────────────────╯${RESET}\n"
-        echo -e "  ${YELLOW}👋 Thank you for using the Development Menu!${RESET}\n"
-        exit 0
-        ;;
-    
-    *)
-        echo -e "\n  ${RED}❌ Invalid Option! Please try again.${RESET}"
-        sleep 1
-        ;;
+while true; do
+    print_header
+
+    printf '%b\n' "${GREEN}  [1]${WHITE} Configure Environment${RESET}"
+    printf '%b\n' "${BLUE}  [2]${WHITE} Show Configuration Path${RESET}"
+    printf '%b\n' "${RED}  [0]${WHITE} Return / Exit${RESET}"
+
+    printf '\n%b' "  ${CYAN}▶ Select Option: ${RESET}"
+    read -r choice || exit 0
+
+    case "$choice" in
+        1)
+            setup_environment
+            pause
+            ;;
+        2)
+            printf '\n%b\n' "${CYAN}Configuration path:${RESET}"
+            printf '  %s\n' "$HOME/vm/.idx/dev.nix"
+            if [ -f "$HOME/vm/.idx/dev.nix" ]; then
+                printf '%b\n' "${GREEN}✔ Configuration file exists.${RESET}"
+            else
+                printf '%b\n' "${YELLOW}⚠ Configuration has not been created yet.${RESET}"
+            fi
+            pause
+            ;;
+        0)
+            printf '\n%b\n' "${GREEN}Returning to VPS Maker...${RESET}"
+            exit 0
+            ;;
+        *)
+            printf '\n%b\n' "${RED}✘ Invalid option. Choose 1, 2, or 0.${RESET}"
+            sleep 1
+            ;;
     esac
 done
