@@ -152,27 +152,28 @@ main_menu() {
         read -r -p "$(printf '%b' "${PINK}${BOLD}  PRITAM ${CYAN}» ${RESET}")" choice || exit 0
 
         case "$choice" in
-            A|a)
-                run_command "${BASE}/pterodactyl/main/install.sh"
-                ;;
-            B|b)
-                run_command "${BASE}/hosting/main/mainmenu/vps-maker.sh"
-                ;;
-            C|c)
-                coming_soon
-                ;;
-            D|d)
-                echo
-                line
-                printf '%b\n' "  ${PINK}${BOLD}Thank you for using PRITAM HOSTING!${RESET}"
-                printf '%b\n' "  ${CYAN}Made by Pritam. Goodbye!${RESET}"
-                line
-                exit 0
-                ;;
-            *)
-                printf '\n%b\n' "  ${RED}✘ Invalid option! Choose A, B, C or D.${RESET}"
-                sleep 1
-                ;;
+    A|a)
+        run_command "${BASE}/hosting/main/pterodactyl/install.sh"
+        ;;
+    B|b)
+        run_command "${BASE}/hosting/main/mainmenu/vps-maker.sh"
+        ;;
+    C|c)
+        coming_soon
+        ;;
+    D|d)
+        echo
+        line
+        printf '%b\n' "  ${PINK}${BOLD}Thank you for using PRITAM HOSTING!${RESET}"
+        printf '%b\n' "  ${CYAN}Made by Pritam. Goodbye!${RESET}"
+        line
+        exit 0
+        ;;
+    *)
+        printf '\n%b\n' "  ${RED}✘ Invalid option! Choose A, B, C or D.${RESET}"
+        sleep 1
+        ;;
+esac
         esac
     done
 }
