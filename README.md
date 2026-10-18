@@ -1,228 +1,185 @@
 
 <div align="center">
 
-# ⚡ PRITAM HOSTING
+# ⚡ PRITAM HOSTING MANAGEMENT TOOLKIT
 
-### 🚀 Hosting & VPS Management Toolkit
+### Your VPS. Your Control. One Toolkit.
 
-**A modular, menu-driven Bash toolkit for server and hosting management.**
+A Bash-based toolkit designed to simplify hosting management and VPS-related tasks through a clean, interactive terminal menu.
 
-[![Bash](https://img.shields.io/badge/Shell-Bash-121011?style=for-the-badge&logo=gnubash&logoColor=white)](https://www.gnu.org/software/bash/)
-[![Platform](https://img.shields.io/badge/Platform-Linux-orange?style=for-the-badge&logo=linux&logoColor=white)](https://www.linux.org/)
-[![Ubuntu](https://img.shields.io/badge/OS-Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com/)
-[![GitHub](https://img.shields.io/badge/Hosted_on-GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/PritamYt403/hosting)
+[![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github)](https://github.com/PritamYt403/hosting)
+[![Shell](https://img.shields.io/badge/Shell-Bash-4EAA25?style=for-the-badge&logo=gnubash&logoColor=white)](https://www.gnu.org/software/bash/)
+[![Platform](https://img.shields.io/badge/Platform-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://www.linux.org/)
 
-**Developed with ❤️ by Pritam**
-
-[Features](#-features) · [Installation](#-installation) · [Menu](#-main-menu) · [Requirements](#-requirements) · [Support](#-support)
+**Developed by [PritamYt403](https://github.com/PritamYt403)**
 
 </div>
 
 ---
 
-## 📖 About the Project
+## 📌 About The Project
 
-**PRITAM HOSTING MANAGEMENT TOOLKIT** is a Bash-based project designed to bring hosting utilities and server-management scripts together in one convenient terminal interface.
+**PRITAM HOSTING MANAGEMENT TOOLKIT** is a menu-driven Bash project created to make hosting-related scripts easier to access and manage from a Linux terminal.
 
-The toolkit uses a modular structure, allowing individual scripts to be maintained and updated separately. Its interactive menu provides access to Pterodactyl management, VPS Maker, and additional tools as they become available.
+Instead of remembering multiple script URLs, users can launch the main menu and select the available tool they need.
 
-Our goal is to make server administration more organized, accessible, and convenient.
-
-> **Project status:** Under active development. Features may be incomplete or require additional configuration.
+The project is designed with simplicity, modularity, and future expansion in mind.
 
 ## ✨ Features
 
-- 🎨 **Neon Terminal UI** — Colorful menus and terminal animations.
-- 🖥️ **Pterodactyl Management** — Access the Pterodactyl management installer.
-- ⚙️ **VPS Maker** — A separate module for VPS-related utilities.
-- 🔧 **Modular Architecture** — Keep individual tools in separate scripts.
-- 🌐 **Remote Script Loading** — Retrieve modules from this GitHub repository.
-- 🛠️ **System Edit** — Reserved for upcoming system-management features.
-- ✅ **Bash Syntax Validation** — Check downloaded scripts before execution.
-- 📦 **Centralized Toolkit** — Access available modules from one main menu.
+- 🎨 **Interactive Terminal Menu** — Navigate through a simple command-line interface.
+- 🖥️ **Pterodactyl Module** — Access the Pterodactyl installer module when available.
+- ⚙️ **VPS Maker Module** — A dedicated section for VPS-related tools.
+- 🔗 **Remote Script Execution** — Launch the main menu directly from the repository.
+- 🧩 **Modular Structure** — Keep tools organized in separate directories.
+- 🚀 **Easy Access** — Start the toolkit with a single command.
+- 🛠️ **Expandable Design** — Add more modules as the project develops.
 
-*Features depend on the implementation and compatibility of each module.*
+## 🚀 Quick Start
 
-## 📋 Requirements
+### Method 1 — Run Directly
 
-Before running the toolkit, make sure you have:
+Requirements:
+- A Linux environment with Bash.
+- `curl` installed.
+- A compatible terminal and required permissions for the selected module.
+- Internet access to retrieve repository scripts.
 
-| Requirement | Description |
-|---|---|
-| Operating system | A supported Linux distribution |
-| Bash | Bash shell |
-| cURL | For downloading remote scripts |
-| Internet | Required for remote modules |
-| Permissions | Root or sudo access for system-level installations |
+Run:
 
-Some modules may have additional dependencies.
-
-## 🚀 Installation
-
-### Option 1 — Run directly
-
-Review the script on GitHub before executing it, especially if you intend to use root privileges.
-
-```bash <(curl -fsSL https://raw.githubusercontent.com/PritamYt403/hosting/main/mainmenu/install.sh)
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/PritamYt403/hosting/main/mainmenu/install.sh)
 ```
 
-### Option 2 — Clone the repository
+> **Important:** Review remote scripts before executing them. Some modules may require root privileges. Only run commands you trust and understand.
+
+### Method 2 — Clone the Repository
+
+Install Git and GitHub CLI if needed, then authenticate the GitHub CLI if your setup requires it.
+
+```bash
+gh repo clone PritamYt403/hosting
+cd hosting
+```
+
+Alternatively, use Git:
 
 ```bash
 git clone https://github.com/PritamYt403/hosting.git
 cd hosting
 ```
 
-Run the main menu:
+Inspect the files before running the main menu:
+
+```bash
+less mainmenu/install.sh
+```
+
+To launch it locally:
 
 ```bash
 bash mainmenu/install.sh
 ```
 
-### Option 3 — Check Bash syntax
-
-To check the downloaded main menu script without running it:
-
-```bash <(curl -fsSL https://raw.githubusercontent.com/PritamYt403/hosting/main/mainmenu/install.sh)
-```
-
-No output usually means the script passed Bash syntax validation. This does not guarantee that every module will run successfully.
-
 ## 🧭 Main Menu
 
-The main toolkit currently uses the following menu:
+The toolkit's menu is intended to provide access to the following sections:
 
-| Option | Module | Status |
+| Option | Module | Purpose |
 |:---:|---|---|
-| A | Pterodactyl Management | In development |
-| B | VPS Maker | In development |
-| C | System Edit | Coming soon |
-| D | Exit Toolkit | Available |
+| A | Pterodactyl | Open the Pterodactyl module |
+| B | VPS Maker | Open the VPS Maker module |
+| C | System Tools | Reserved for additional tools, depending on implementation |
+| D | Exit | Close the toolkit |
 
-Actual functionality depends on the scripts available in the repository.
+*Available options depend on the current implementation in the repository.*
 
-## 📁 Project Structure
+## 📂 Project Structure
 
 ```text
 hosting/
 ├── mainmenu/
-│   ├── install.sh
-│   └── vps-maker.sh
-├── pterodactyl/
 │   └── install.sh
+├── pterodactyl/
 ├── vps-maker/
-├── README.md
-└── LICENSE (optional)
+└── README.md
 ```
 
-This is a simplified overview. The exact files and folders may change as the project develops.
+The module directories may contain additional scripts and supporting files.
 
-## 🔐 Security Guidelines
+## 🔐 Security & Best Practices
 
-Please follow these precautions when using the toolkit:
-
-- **Review scripts first.** Understand what a script does before executing it.
-- **Use root privileges carefully.** Installation scripts may modify system files, services, and firewall rules.
-- **Protect credentials.** Never commit passwords, API tokens, SSH private keys, or other secrets.
-- **Back up your server.** Keep backups before installing, updating, or removing hosting software.
-- **Verify remote URLs.** Confirm that scripts come from the intended repository and branch.
-- **Check compatibility.** Confirm that the operating system and software versions are supported.
-
-Bash syntax validation checks for parsing errors only; it does not prove that a script is safe.
+- Review scripts before running them with elevated privileges.
+- Never share SSH private keys, passwords, API tokens, or other secrets.
+- Use root privileges only when a module genuinely requires them.
+- Verify remote script URLs and repository ownership.
+- Back up important server data before making system-level changes.
+- Run commands only on systems you own or are authorized to administer.
 
 ## 🛠️ Troubleshooting
 
-<details>
-<summary><strong>cURL is not installed</strong></summary>
+### `curl: command not found`
 
-On Debian or Ubuntu:
+Install `curl` using your Linux distribution's package manager.
 
-```bash
-sudo apt-get update
-sudo apt-get install -y curl
-```
+### `gh: command not found`
 
-</details>
+Install GitHub CLI, or use the standard `git clone` command shown above.
 
-<details>
-<summary><strong>The installer says to run as root</strong></summary>
+### `Run this tool as root`
 
-Use a VPS account with authorized root access. If your account has sudo privileges, you can open a root shell with:
+The selected module requires elevated privileges. Use an authorized VPS account with the necessary permissions. A restricted online terminal may not provide root access.
 
-```bash
-sudo -i
-```
+### Remote script not found
 
-Some online terminals do not provide root access and cannot run system-level installers.
+Verify the file exists in the repository and check that the URL uses the correct branch and path.
 
-</details>
+### Permission or execution errors
 
-<details>
-<summary><strong>Module download failed</strong></summary>
-
-Check your internet connection, repository name, branch, and file path. Confirm that the requested file exists in the `main` branch.
-
-</details>
-
-<details>
-<summary><strong>Bash syntax error</strong></summary>
-
-Check the relevant script using:
-
-```bash
-bash -n mainmenu/install.sh
-```
-
-Make sure all `if`, `case`, loops, functions, and quotation marks are correctly closed.
-
-</details>
+Check the script's requirements, Linux environment, and permissions before retrying.
 
 ## 🗺️ Roadmap
 
-- [ ] Complete and test Pterodactyl management features.
-- [ ] Develop and document VPS Maker.
-- [ ] Implement System Edit utilities.
-- [ ] Improve dependency and compatibility checks.
-- [ ] Improve error handling and installation logs.
-- [ ] Add module-specific documentation.
-- [ ] Add release notes and version information.
+Potential improvements for future versions:
+
+- [ ] Additional hosting management modules
+- [ ] Improved error handling and diagnostics
+- [ ] Consistent terminal themes and animations
+- [ ] Module status and dependency checks
+- [ ] Expanded documentation
+
+*Roadmap items are plans, not promises of currently available features.*
 
 ## 🤝 Contributing
 
-Suggestions, bug reports, and improvements are welcome.
+Contributions, suggestions, and bug reports are welcome.
 
 1. Fork the repository.
 2. Create a feature branch.
-3. Make your changes.
-4. Test the affected scripts.
-5. Submit a pull request.
+3. Make and test your changes.
+4. Submit a pull request describing the changes.
 
-Please avoid committing credentials or other sensitive information.
+Please keep scripts readable, validate shell syntax, and document any new dependencies.
 
 ## 💬 Support
 
-For questions, bugs, or feature suggestions, open an issue in the repository:
+For questions, bugs, or feature requests, visit:
 
-**[PritamYt403/hosting — GitHub Repository](https://github.com/PritamYt403/hosting/issues)**
+- **Repository:** https://github.com/PritamYt403/hosting
+- **Issues:** https://github.com/PritamYt403/hosting/issues
 
-## ⚖️ Disclaimer
+When reporting an issue, include the command used, the relevant error message, and your environment. Never include passwords or access tokens.
 
-This project is provided for educational purposes and authorized server administration.
+## 📄 License
 
-The toolkit may contain experimental or incomplete features. Always inspect scripts before execution, especially when using root privileges. Use the software responsibly and maintain backups of important data.
-
-## 📜 License
-
-No license has been specified unless a `LICENSE` file exists in the repository. Until a license is added, do not assume that others have permission to redistribute or modify the project.
+Please check the repository's `LICENSE` file for the applicable license and permissions. If no license file exists, do not assume that public availability grants permission to redistribute or modify the code.
 
 ---
 
 <div align="center">
 
-### ⚡ PRITAM HOSTING MANAGEMENT TOOLKIT
+**Built with ⚡ by [PritamYt403](https://github.com/PritamYt403)**
 
-**Built with Bash · Designed for Server Management**
-
-Made with ❤️ by **Pritam**
+*Simple tools. Cleaner workflows. Better hosting management.*
 
 </div>
