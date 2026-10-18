@@ -19,14 +19,6 @@ BASE="https://raw.githubusercontent.com/PritamYt403/hosting/main/vps-maker"
 
 print_menu() {
     clear
-    echo -e "${GREEN}${BOLD}"
-    echo "   ██████  ██████   ██████   █████  ███    ███"
-    echo "  ██       ██   ██ ██       ██   ██ ████  ████"
-    echo "   █████   ██   ██ ██   ███ ███████ ██ ████ ██"
-    echo "       ██  ██   ██ ██    ██ ██   ██ ██  ██  ██"
-    echo "   ██████  ██████   ██████  ██   ██ ██      ██"
-    echo -e "${RESET}"
-
     echo -e "${CYAN}  ╭──────────────────────────────────────────────────────╮"
     echo -e "  │${WHITE}${BOLD}        D E V E L O P M E N T   M E N U  (V26.1)      ${CYAN}│"
     echo -e "  ├──────────────────────────────────────────────────────┤"
