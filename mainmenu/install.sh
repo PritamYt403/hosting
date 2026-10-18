@@ -3,11 +3,9 @@
 
 # ═══════════════════════════════════════════════════════════
 #          PRITAM HOSTING MANAGEMENT TOOLKIT
-#                   NEON PROFESSIONAL
-#                    Created by Pritam
+#                 NEON PROFESSIONAL EDITION
+#                     Created by Pritam
 # ═══════════════════════════════════════════════════════════
-
-set -o pipefail
 
 PURPLE='\033[1;35m'
 CYAN='\033[1;36m'
@@ -25,11 +23,11 @@ BASE="https://raw.githubusercontent.com/PritamYt403"
 
 pause() {
     echo
-    read -rp "  Press Enter to continue..." _
+    read -r -p "  Press Enter to continue..." _
 }
 
 line() {
-    printf '%b\n' "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    printf '%b\n' "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 }
 
 loading() {
@@ -41,7 +39,7 @@ loading() {
         sleep 0.10
     done
 
-    printf '\r%b\n\n' "  ${GREEN}${BOLD}✔ PRITAM HOSTING READY                         ${RESET}"
+    printf '\r%b\n\n' "  ${GREEN}${BOLD}✔ PRITAM HOSTING READY${RESET}"
 }
 
 header() {
@@ -73,7 +71,7 @@ run_command() {
     local status
 
     script="$(mktemp)" || {
-        printf '%b\n' "  ${RED}✘ Cannot create temporary file.${RESET}"
+        printf '%b\n' "  ${RED}Cannot create temporary file.${RESET}"
         pause
         return 1
     }
@@ -86,24 +84,23 @@ run_command() {
 
     if ! curl -fsSL --connect-timeout 10 --max-time 120 "$url" -o "$script"; then
         printf '\n%b\n' "  ${RED}${BOLD}✘ DOWNLOAD FAILED${RESET}"
-        printf '%b\n' "  ${YELLOW}Check the URL and repository file path.${RESET}"
+        printf '%b\n' "  ${YELLOW}Check the repository and file path.${RESET}"
         rm -f "$script"
         pause
         return 1
     fi
 
     if [[ ! -s "$script" ]] || ! bash -n "$script"; then
-        printf '\n%b\n' "  ${RED}${BOLD}✘ INVALID SCRIPT OR BASH SYNTAX ERROR${RESET}"
+        printf '\n%b\n' "  ${RED}${BOLD}✘ Invalid script or Bash syntax error.${RESET}"
         rm -f "$script"
         pause
         return 1
     fi
 
-    printf '%b\n\n' "  ${GREEN}✔ Script downloaded and syntax checked.${RESET}"
+    printf '%b\n\n' "  ${GREEN}✔ Script syntax verified.${RESET}"
 
     bash "$script"
     status=$?
-
     rm -f "$script"
 
     if (( status == 0 )); then
@@ -134,7 +131,6 @@ coming_soon() {
     printf '%b\n' "  ${CYAN}This feature is currently under development.${RESET}"
     printf '%b\n' "  ${YELLOW}Please check back later!${RESET}"
     echo
-
     line
     pause
 }
@@ -145,12 +141,12 @@ main_menu() {
     while true; do
         header
 
-        printf '%b\n' "  ${WHITE}${BOLD}╭────────────────── MAIN MENU ──────────────────╮${RESET}"
+        printf '%b\n' "  ${WHITE}${BOLD}╭──────────────── MAIN MENU ────────────────╮${RESET}"
         printf '%b\n' "  ${PURPLE}${BOLD}  [A]${RESET} ${WHITE}Pterodactyl Management${RESET}"
         printf '%b\n' "  ${CYAN}${BOLD}  [B]${RESET} ${WHITE}VPS Maker${RESET}"
         printf '%b\n' "  ${ORANGE}${BOLD}  [D]${RESET} ${YELLOW}System Edit ${GRAY}(COMING SOON)${RESET}"
         printf '%b\n' "  ${RED}${BOLD}  [E]${RESET} ${WHITE}Exit Toolkit${RESET}"
-        printf '%b\n' "  ${WHITE}${BOLD}╰───────────────────────────────────────────────╯${RESET}"
+        printf '%b\n' "  ${WHITE}${BOLD}╰────────────────────────────────────────────╯${RESET}"
         echo
 
         read -r -p "$(printf '%b' "${PINK}${BOLD}  PRITAM ${CYAN}» ${RESET}")" choice || exit 0
@@ -160,7 +156,7 @@ main_menu() {
                 run_command "${BASE}/pterodactyl/main/install.sh"
                 ;;
             B|b)
-                run_command "${BASE}/hosting/main/mainmanu/vps-maker.sh"
+                run_command "${BASE}/hosting/main/mainmenu/vps-maker.sh"
                 ;;
             D|d)
                 coming_soon
