@@ -6,8 +6,6 @@
 #                   NEON PROFESSIONAL
 # ═══════════════════════════════════════════════════════
 
-set -o pipefail
-
 PURPLE='\033[1;35m'
 CYAN='\033[1;36m'
 GREEN='\033[1;32m'
@@ -35,8 +33,6 @@ loading() {
     local frames=('◐' '◓' '◑' '◒')
     local i
 
-    printf "\n  ${CYAN}${BOLD}Initializing PRITAM HOSTING${RESET} "
-
     for ((i=0; i<12; i++)); do
         printf "\r  ${PURPLE}${BOLD}${frames[i%4]}${RESET} ${CYAN}Initializing PRITAM HOSTING...${RESET}"
         sleep 0.10
@@ -47,7 +43,6 @@ loading() {
 
 header() {
     clear 2>/dev/null || true
-
     echo
     echo -e "${PURPLE}${BOLD}"
     cat <<'EOF'
@@ -59,12 +54,10 @@ header() {
     ╚═╝     ╚═╝  ╚═╝╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝
 EOF
     echo -e "${RESET}"
-
     echo -e "             ${ORANGE}${BOLD}P R I T A M${RESET}"
     echo -e "       ${CYAN}${BOLD}HOSTING MANAGEMENT TOOLKIT${RESET}"
     echo -e "          ${PINK}✦ NEON PROFESSIONAL EDITION ✦${RESET}"
-    echo -e "                ${GRAY}Created by Pritam${RESET}"
-
+    echo -e "                ${GRAY}Made by Pritam${RESET}"
     line
     echo
 }
@@ -75,7 +68,7 @@ run_command() {
     local status
 
     script="$(mktemp)" || {
-        echo -e "${RED}  ✘ Cannot create temporary file.${RESET}"
+        echo -e "${RED}  Cannot create temporary file.${RESET}"
         pause
         return 1
     }
@@ -83,12 +76,11 @@ run_command() {
     echo
     line
     echo -e "  ${CYAN}${BOLD}➤ LAUNCHING SERVICE${RESET}"
-    echo -e "  ${GRAY}Downloading selected script...${RESET}"
+    echo -e "  ${GRAY}Downloading script...${RESET}"
     line
 
     if ! curl -fsSL --connect-timeout 10 --max-time 120 "$url" -o "$script"; then
         echo -e "\n  ${RED}${BOLD}✘ DOWNLOAD FAILED${RESET}"
-        echo -e "  ${YELLOW}Check the URL or internet connection.${RESET}"
         rm -f "$script"
         pause
         return 1
@@ -101,20 +93,42 @@ run_command() {
         return 1
     fi
 
-    echo -e "  ${GREEN}✔ Script downloaded and syntax checked.${RESET}"
-    echo
+    echo -e "  ${GREEN}✔ Script verified.${RESET}\n"
 
     bash "$script"
     status=$?
-
     rm -f "$script"
 
     if (( status == 0 )); then
-        echo -e "\n  ${GREEN}${BOLD}✔ SERVICE FINISHED${RESET}"
+        echo -e "\n  ${GREEN}✔ Service finished.${RESET}"
     else
-        echo -e "\n  ${YELLOW}${BOLD}⚠ SERVICE EXITED WITH CODE ${status}${RESET}"
+        echo -e "\n  ${YELLOW}⚠ Service exited with code ${status}.${RESET}"
     fi
 
+    pause
+}
+
+coming_soon() {
+    local frames=('◐' '◓' '◑' '◒')
+    local i
+
+    echo
+    line
+    echo
+
+    for ((i=0; i<20; i++)); do
+        printf "\r  ${ORANGE}${BOLD}${frames[i%4]} ${WHITE}COMING SOON${ORANGE} — Preparing something awesome...${RESET"
+        sleep 0.12
+    done
+
+    echo
+    echo
+    echo -e "  ${PINK}${BOLD}✦ SYSTEM EDIT ✦${RESET}"
+    echo -e "  ${CYAN}This feature is currently under development.${RESET}"
+    echo -e "  ${YELLOW}Please check back later!${RESET}"
+
+    echo
+    line
     pause
 }
 
@@ -127,8 +141,7 @@ main_menu() {
         echo -e "  ${WHITE}${BOLD}╭──────────────── MAIN MENU ────────────────╮${RESET}"
         echo -e "  ${PURPLE}${BOLD}  [A]${RESET} ${WHITE}Pterodactyl Management${RESET}"
         echo -e "  ${CYAN}${BOLD}  [B]${RESET} ${WHITE}VPS Maker${RESET}"
-        echo -e "  ${GREEN}${BOLD}  [C]${RESET} ${WHITE}Tools & Utilities${RESET}"
-        echo -e "  ${ORANGE}${BOLD}  [D]${RESET} ${WHITE}System Edit${RESET}"
+        echo -e "  ${ORANGE}${BOLD}  [D]${RESET} ${YELLOW}System Edit ${GRAY}(COMING SOON)${RESET}"
         echo -e "  ${RED}${BOLD}  [E]${RESET} ${WHITE}Exit Toolkit${RESET}"
         echo -e "  ${WHITE}${BOLD}╰────────────────────────────────────────────╯${RESET}"
         echo
@@ -142,22 +155,19 @@ main_menu() {
             B|b)
                 run_command "${REPO}/hosting/main/mainmanu/vps-maker.sh"
                 ;;
-            C|c)
-                run_command "${REPO}/hosting/main/mainmanu/tools.sh"
-                ;;
             D|d)
-                run_command "${REPO}/hosting/main/mainmanu/system-edit.sh"
+                coming_soon
                 ;;
             E|e)
                 echo
                 line
-                echo -e "  ${PINK}${BOLD}✦ THANK YOU FOR USING PRITAM HOSTING ✦${RESET}"
-                echo -e "  ${CYAN}          Made with care by Pritam${RESET}"
+                echo -e "  ${PINK}${BOLD}Thank you for using PRITAM HOSTING!${RESET}"
+                echo -e "  ${CYAN}Made by Pritam. Goodbye!${RESET}"
                 line
                 exit 0
                 ;;
             *)
-                echo -e "\n  ${RED}✘ Invalid option! Choose A, B, C, D or E.${RESET}"
+                echo -e "\n  ${RED}✘ Invalid option! Choose A, B, D or E.${RESET}"
                 sleep 1
                 ;;
         esac
