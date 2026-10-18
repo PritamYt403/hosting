@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 # ==========================================
@@ -22,6 +23,7 @@ WHITE="\e[37m"
 
 print_menu() {
     clear
+
     # ASCII Banner
     echo -e "${GREEN}${BOLD}"
     echo -e "  ██████  ██████  ██ ████████  █████  ███    ███"
@@ -61,4 +63,53 @@ print_divider() {
 while true; do
     print_menu
 
-    echo -ne "  ${CY
+    echo -ne "  ${CYAN}▶${RESET} ${BOLD}Select Option:${RESET} "
+    read -r op
+
+    case "$op" in
+
+    # (1) Run VM1 KVM
+    1)
+        clear
+        print_status "🌐 Starting IDX VM (KVM) From GitHub..." "$YELLOW"
+        print_divider
+
+        echo -e "  ${CYAN}📡 Fetching script...${RESET}"
+        bash <(curl -s https://raw.githubusercontent.com/sdgamer8263-sketch/VPS/main/Vm1)
+
+        echo -e ""
+        print_divider
+        read -rp "  ↩ Press Enter to return..."
+        ;;
+
+    # (2) Run VM2 No KVM
+    2)
+        clear
+        print_status "🌐 Starting VM (No KVM) From GitHub..." "$BLUE"
+        print_divider
+
+        echo -e "  ${CYAN}📡 Fetching scripts...${RESET}"
+        bash <(curl -s https://raw.githubusercontent.com/sdgamer8263-sketch/VPS/main/Dd)
+        bash <(curl -s https://raw.githubusercontent.com/sdgamer8263-sketch/VPS/main/Vm2)
+
+        echo -e ""
+        print_divider
+        read -rp "  ↩ Press Enter to return..."
+        ;;
+
+    # (0) EXIT
+    0)
+        clear
+        echo -e "\n  ${CYAN}╭──────────────────────────────────────────────────────╮${RESET}"
+        echo -e "  ${CYAN}│${RESET}${BOLD}${WHITE}                     E X I T I N G                    ${CYAN}│${RESET}"
+        echo -e "  ${CYAN}╰──────────────────────────────────────────────────────╯${RESET}\n"
+        echo -e "  ${YELLOW}👋 Thank you for using PRITAM VPS!${RESET}\n"
+        exit 0
+        ;;
+
+    *)
+        echo -e "\n  ${RED}❌ Invalid Option! Please try again.${RESET}"
+        sleep 1
+        ;;
+    esac
+done
