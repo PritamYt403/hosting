@@ -59,7 +59,6 @@ EOF
     printf '%b\n' "${RESET}"
     printf '%b\n' "                  ${ORANGE}${BOLD}P R I T A M${RESET}"
     printf '%b\n' "           ${CYAN}${BOLD}HOSTING MANAGEMENT TOOLKIT${RESET}"
-    printf '%b\n' "             ${PINK}✦ NEON PROFESSIONAL EDITION ✦${RESET}"
     printf '%b\n' "                 ${GRAY}Made by Pritam${RESET}"
     line
     echo
@@ -156,7 +155,7 @@ main_menu() {
                 run_command "${BASE}/pterodactyl/install.sh"
                 ;;
             B|b)
-                run_command "${BASE}/mainmenu/vps-maker.sh"
+                run_command "${BASE}/vps-maker/vps-maker.sh"
                 ;;
             C|c)
                 coming_soon
