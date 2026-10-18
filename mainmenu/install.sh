@@ -23,7 +23,7 @@ BASE="https://raw.githubusercontent.com/PritamYt403"
 
 pause() {
     echo
-    read -r -p "  Press Enter to continue..." _
+    read -r -p "  Press Enter to continue..." _ || true
 }
 
 line() {
@@ -36,7 +36,7 @@ loading() {
 
     for ((i=0; i<12; i++)); do
         printf '\r%b' "  ${PURPLE}${BOLD}${frames[i%4]}${RESET} ${CYAN}Initializing PRITAM HOSTING...${RESET}"
-        sleep 0.10
+        sleep 0.1
     done
 
     printf '\r%b\n\n' "  ${GREEN}${BOLD}✔ PRITAM HOSTING READY${RESET}"
@@ -152,28 +152,27 @@ main_menu() {
         read -r -p "$(printf '%b' "${PINK}${BOLD}  PRITAM ${CYAN}» ${RESET}")" choice || exit 0
 
         case "$choice" in
-    A|a)
-        run_command "${BASE}/hosting/main/pterodactyl/install.sh"
-        ;;
-    B|b)
-        run_command "${BASE}/hosting/main/mainmenu/vps-maker.sh"
-        ;;
-    C|c)
-        coming_soon
-        ;;
-    D|d)
-        echo
-        line
-        printf '%b\n' "  ${PINK}${BOLD}Thank you for using PRITAM HOSTING!${RESET}"
-        printf '%b\n' "  ${CYAN}Made by Pritam. Goodbye!${RESET}"
-        line
-        exit 0
-        ;;
-    *)
-        printf '\n%b\n' "  ${RED}✘ Invalid option! Choose A, B, C or D.${RESET}"
-        sleep 1
-        ;;
-esac
+            A|a)
+                run_command "${BASE}/hosting/main/pterodactyl/install.sh"
+                ;;
+            B|b)
+                run_command "${BASE}/hosting/main/mainmenu/vps-maker.sh"
+                ;;
+            C|c)
+                coming_soon
+                ;;
+            D|d)
+                echo
+                line
+                printf '%b\n' "  ${PINK}${BOLD}Thank you for using PRITAM HOSTING!${RESET}"
+                printf '%b\n' "  ${CYAN}Made by Pritam. Goodbye!${RESET}"
+                line
+                exit 0
+                ;;
+            *)
+                printf '\n%b\n' "  ${RED}✘ Invalid option! Choose A, B, C or D.${RESET}"
+                sleep 1
+                ;;
         esac
     done
 }
@@ -186,4 +185,3 @@ fi
 
 loading
 main_menu
-
