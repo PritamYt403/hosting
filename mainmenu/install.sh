@@ -19,7 +19,7 @@ GRAY='\033[0;90m'
 RESET='\033[0m'
 BOLD='\033[1m'
 
-BASE="https://raw.githubusercontent.com/PritamYt403"
+BASE="https://raw.githubusercontent.com/PritamYt403/hosting/main"
 
 pause() {
     echo
@@ -71,7 +71,7 @@ run_command() {
     local status
 
     script="$(mktemp)" || {
-        printf '%b\n' "  ${RED}Cannot create temporary file.${RESET}"
+        printf '%b\n' "  ${RED}✘ Cannot create temporary file.${RESET}"
         pause
         return 1
     }
@@ -79,19 +79,19 @@ run_command() {
     echo
     line
     printf '%b\n' "  ${CYAN}${BOLD}➤ LAUNCHING SERVICE${RESET}"
-    printf '%b\n' "  ${GRAY}Downloading script...${RESET}"
+    printf '%b\n' "  ${GRAY}Downloading: ${url}${RESET}"
     line
 
     if ! curl -fsSL --connect-timeout 10 --max-time 120 "$url" -o "$script"; then
         printf '\n%b\n' "  ${RED}${BOLD}✘ DOWNLOAD FAILED${RESET}"
-        printf '%b\n' "  ${YELLOW}Check the repository and file path.${RESET}"
+        printf '%b\n' "  ${YELLOW}Check the GitHub file path.${RESET}"
         rm -f "$script"
         pause
         return 1
     fi
 
     if [[ ! -s "$script" ]] || ! bash -n "$script"; then
-        printf '\n%b\n' "  ${RED}${BOLD}✘ Invalid script or Bash syntax error.${RESET}"
+        printf '\n%b\n' "  ${RED}${BOLD}✘ Script is empty or has a Bash syntax error.${RESET}"
         rm -f "$script"
         pause
         return 1
@@ -101,6 +101,7 @@ run_command() {
 
     bash "$script"
     status=$?
+
     rm -f "$script"
 
     if (( status == 0 )); then
@@ -110,6 +111,7 @@ run_command() {
     fi
 
     pause
+    return "$status"
 }
 
 coming_soon() {
@@ -118,7 +120,6 @@ coming_soon() {
 
     echo
     line
-    echo
 
     for ((i=0; i<20; i++)); do
         printf '\r%b' "  ${ORANGE}${BOLD}${frames[i%4]} ${WHITE}COMING SOON${ORANGE} - Preparing something awesome...${RESET}"
@@ -130,7 +131,6 @@ coming_soon() {
     printf '%b\n' "  ${PINK}${BOLD}✦ SYSTEM EDIT ✦${RESET}"
     printf '%b\n' "  ${CYAN}This feature is currently under development.${RESET}"
     printf '%b\n' "  ${YELLOW}Please check back later!${RESET}"
-    echo
     line
     pause
 }
@@ -153,10 +153,10 @@ main_menu() {
 
         case "$choice" in
             A|a)
-                run_command "${BASE}/hosting/main/pterodactyl/install.sh"
+                run_command "${BASE}/pterodactyl/install.sh"
                 ;;
             B|b)
-                run_command "${BASE}/hosting/main/mainmenu/vps-maker.sh"
+                run_command "${BASE}/mainmenu/vps-maker.sh"
                 ;;
             C|c)
                 coming_soon
@@ -179,7 +179,7 @@ main_menu() {
 
 if ! command -v curl >/dev/null 2>&1; then
     printf '%b\n' "${RED}curl is required.${RESET}"
-    echo "Install: sudo apt-get update && sudo apt-get install -y curl"
+    echo "Install curl using your system package manager."
     exit 1
 fi
 
