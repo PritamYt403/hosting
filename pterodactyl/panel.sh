@@ -67,7 +67,7 @@ while true; do
     echo -e "  ${GREEN}[3]${WHITE} Panel Update${RESET}"
     echo -e "      Update to a Pterodactyl Release"
     echo
-    echo -e "  ${GREEN}[5]${WHITE} Panel Removal${RESET}"
+    echo -e "  ${GREEN}[4]${WHITE} Panel Removal${RESET}"
     echo -e "      Remove Panel Data and Configuration"
     echo
     echo -e "${PURPLE}  ──────────────────────────────────────────────────────────${RESET}"
