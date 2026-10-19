@@ -25,6 +25,10 @@ set -e -o pipefail
 #                                                                                    #
 # This script is not associated with the official Pterodactyl Project.               #
 # https://github.com/pterodactyl-installer/pterodactyl-installer                     #
+
+# Pritam customization:
+# Branding and local fixes maintained by PritamX / Pritam.
+# Original project copyright and GPL license above remain unchanged.
 #                                                                                    #
 ######################################################################################
 
@@ -188,15 +192,24 @@ configure() {
 
 # set the correct folder permissions depending on OS and webserver
 set_folder_permissions() {
-  # if os is ubuntu or debian, we do this
+  output "Setting Panel file permissions..."
+
+  # Use the full installation path so hidden files (including .env)
+  # receive the correct owner too.
   case "$OS" in
-  debian | ubuntu)
-    chown -R www-data:www-data ./*
-    ;;
-  rocky | almalinux)
-    chown -R nginx:nginx ./*
-    ;;
+    debian | ubuntu)
+      chown -R www-data:www-data /var/www/pterodactyl
+      ;;
+    rocky | almalinux)
+      chown -R nginx:nginx /var/www/pterodactyl
+      ;;
+    *)
+      error "Unsupported OS for Panel file permissions: $OS"
+      return 1
+      ;;
   esac
+
+  success "Panel file permissions configured!"
 }
 
 insert_cronjob() {
@@ -504,3 +517,9 @@ perform_install() {
 # ------------------- Install ------------------ #
 
 perform_install
+
+echo
+success "Pritam Panel installer finished!"
+output "Panel files: /var/www/pterodactyl"
+output "Open your configured domain/IP in a browser."
+output "Original installer copyright and GPL license are preserved."
