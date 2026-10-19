@@ -1,4 +1,4 @@
-
+```bash
 #!/usr/bin/env bash
 
 # ==========================================
@@ -13,34 +13,49 @@ YELLOW='\033[1;33m'
 WHITE='\033[1;37m'
 RESET='\033[0m'
 
+BASE_URL="https://raw.githubusercontent.com/PritamYt403/hosting/main/pterodactyl"
+
 line() {
     echo -e "${PURPLE}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 }
 
 run_script() {
     local file="$1"
-    local url="https://raw.githubusercontent.com/PritamYt403/hosting/main/pterodactyl/${file}"
     local tmp
+    local status=0
 
-    tmp="$(mktemp)" || return
+    if ! command -v curl >/dev/null 2>&1; then
+        echo -e "${RED}[!] curl is not installed.${RESET}"
+        return 1
+    fi
 
-    echo -e "${CYAN}[*] Loading ${file}...${RESET}"
+    tmp="$(mktemp)" || return 1
 
-    if curl -fsSL "$url" -o "$tmp"; then
-        bash "$tmp"
-        local status=$?
-        rm -f "$tmp"
-        echo
-        if [ "$status" -ne 0 ]; then
-            echo -e "${RED}[!] Script exited with code ${status}.${RESET}"
+    echo -e "${CYAN}[*] Downloading ${file}...${RESET}"
+
+    if curl -fsSL --connect-timeout 15 "${BASE_URL}/${file}" -o "$tmp"; then
+        if [[ ! -s "$tmp" ]]; then
+            echo -e "${RED}[!] Downloaded file is empty.${RESET}"
+            rm -f "$tmp"
+            return 1
         fi
+
+        echo -e "${GREEN}[*] Running ${file}...${RESET}"
+        bash "$tmp" || status=$?
     else
-        rm -f "$tmp"
-        echo -e "${RED}[!] Could not download ${file}${RESET}"
+        echo -e "${RED}[!] Could not download ${file}.${RESET}"
+        status=1
+    fi
+
+    rm -f "$tmp"
+
+    if [[ "$status" -ne 0 ]]; then
+        echo -e "${RED}[!] Script exited with code ${status}.${RESET}"
     fi
 
     echo
-    read -rp "Press Enter to return..."
+    read -rp "Press Enter to return..." _ || true
+    return 0
 }
 
 while true; do
@@ -58,38 +73,34 @@ while true; do
     echo -e "${YELLOW}  CONTROL MODULES${RESET}"
     line
     echo
+
     echo -e "  ${GREEN}[1]${WHITE} Panel Installation${RESET}"
     echo -e "      Fresh Pterodactyl Panel Installation"
     echo
-    echo -e "  ${GREEN}[2]${WHITE} Account Management${RESET}"
-    echo -e "      Create Admin / User Accounts"
-    echo
-    echo -e "  ${GREEN}[3]${WHITE} Panel Update${RESET}"
-    echo -e "      Update to a Pterodactyl Release"
-    echo
-    echo -e "  ${GREEN}[4]${WHITE} Panel Removal${RESET}"
+
+    echo -e "  ${RED}[2]${WHITE} Panel Removal${RESET}"
     echo -e "      Remove Panel Data and Configuration"
     echo
-    echo -e "${PURPLE}  ──────────────────────────────────────────────────────────${RESET}"
-    echo
+
     echo -e "  ${RED}[0]${WHITE} Exit System${RESET}"
     echo
     line
 
-    read -rp "$(echo -e "${YELLOW}  Select an option: ${RESET}")" choice
+    read -rp "$(echo -e "${YELLOW}  Select an option [0-2]: ${RESET}")" choice || exit 0
 
     case "$choice" in
-        1) run_script "pterodactary.sh" ;;
-        2) run_script "user-management.sh" ;;
-        3) run_script "panel-update.sh" ;;
-        5)
+        1)
+            run_script "pterodactary.sh"
+            ;;
+        2)
             echo
-            echo -e "${RED}WARNING: Panel removal can delete important data.${RESET}"
-            read -rp "Type YES to continue: " confirm
+            echo -e "${RED}WARNING: Panel removal may delete panel data and configuration!${RESET}"
+            read -rp "Type YES to confirm removal: " confirm
+
             if [[ "$confirm" == "YES" ]]; then
                 run_script "uninstall.sh"
             else
-                echo -e "${YELLOW}Cancelled.${RESET}"
+                echo -e "${YELLOW}Removal cancelled.${RESET}"
                 sleep 1
             fi
             ;;
@@ -103,3 +114,4 @@ while true; do
             ;;
     esac
 done
+```
