@@ -12,6 +12,8 @@ RED='\033[1;31m'
 WHITE='\033[1;37m'
 RESET='\033[0m'
 
+BASE_URL="https://raw.githubusercontent.com/PritamYt403/hosting/main/pterodactyl"
+
 pause() {
     echo
     read -rp "Press Enter to continue..." _ || true
@@ -37,7 +39,45 @@ header() {
     echo
 }
 
+run_remote_script() {
+    local filename="$1"
+    local tmp
+    local status=0
+
+    if ! command -v curl >/dev/null 2>&1; then
+        echo -e "${RED}curl is not installed. Install curl first.${RESET}"
+        return 1
+    fi
+
+    tmp="$(mktemp)" || {
+        echo -e "${RED}Could not create temporary file.${RESET}"
+        return 1
+    }
+
+    echo -e "${CYAN}Downloading ${filename}...${RESET}"
+
+    if curl -fsSL --connect-timeout 15 \
+        "${BASE_URL}/${filename}" -o "$tmp"; then
+        if [ ! -s "$tmp" ]; then
+            echo -e "${RED}Downloaded script is empty.${RESET}"
+            rm -f "$tmp"
+            return 1
+        fi
+
+        echo -e "${GREEN}Starting ${filename}...${RESET}"
+        bash "$tmp" || status=$?
+    else
+        echo -e "${RED}Download failed: ${filename}${RESET}"
+        status=1
+    fi
+
+    rm -f "$tmp"
+    return "$status"
+}
+
 main_menu() {
+    local choice
+
     while true; do
         header
         echo -e "  ${GREEN}1)${RESET} Blueprint Setup"
@@ -48,9 +88,16 @@ main_menu() {
         read -rp "📝 Select an option [0-2]: " choice || return 0
 
         case "$choice" in
-            1) blueprint-install.sh ;;
-            2) themes_menu ;;
-            0) return 0 ;;
+            1)
+                run_remote_script "blueprint-install.sh" || true
+                pause
+                ;;
+            2)
+                themes_menu
+                ;;
+            0)
+                return 0
+                ;;
             *)
                 echo -e "${RED}Invalid option! Choose 0, 1, or 2.${RESET}"
                 pause
@@ -59,18 +106,9 @@ main_menu() {
     done
 }
 
-blueprint_setup() {
-    clear
-    echo -e "${PURPLE}==============================================${RESET}"
-    echo -e "${CYAN}             PRITAM BLUEPRINT SETUP${RESET}"
-    echo -e "${PURPLE}==============================================${RESET}"
-    echo
-    echo -e "${YELLOW}Blueprint installer URL is not configured yet.${RESET}"
-    echo "Configure a verified official installer URL before installation."
-    pause
-}
-
 themes_menu() {
+    local choice
+
     while true; do
         clear
         echo -e "${PURPLE}==============================================${RESET}"
