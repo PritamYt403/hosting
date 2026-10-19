@@ -3,7 +3,7 @@
 
 # ==========================================================
 #          PRITAM HOSTING MANAGER
-#             made by pritam 
+#             made by pritam
 # ==========================================================
 
 PURPLE='\033[1;35m'
@@ -26,23 +26,24 @@ menu() {
     echo -e "${CYAN}           🚀 PRITAM HOSTING MANAGER${RESET}"
     echo -e "${WHITE}                 made by pritam${RESET}"
     line
+
     echo -e "${PURPLE}"
     cat <<'EOF'
  __  __    _    ___ _   _    __  __ _____ _   _ _   _
 |  \/  |  / \  |_ _| \ | |  |  \/  | ____| \ | | | | |
 | |\/| | / _ \  | ||  \| |  | |\/| |  _| |  \| | | | |
-| |  | |/ ___ \ | || |\  |  | |  | | |___| |\  | |_| |
+| |  | |/ ___ \ | || |\  |  |  | | |___| |\  | |_| |
 |_|  |_/_/   \_\___|_| \_|  |_|  |_|_____|_| \_|\___/
 EOF
     echo -e "${RESET}"
+
     line
-    echo -e "${GREEN}  1)${WHITE} Panel Installation"
-    echo -e "${GREEN}  2)${WHITE} Wings Installation"
-    echo -e "${GREEN}  3)${WHITE} Blueprint + Theme + Extensions"
-    echo -e "${GREEN}  4)${WHITE} Cloudflare Setup"
-    echo -e "${GREEN}  5)${WHITE} System Information"
-    echo -e "${GREEN}  6)${WHITE} Tailscale (install + up)"
-    echo -e "${GREEN}  7)${WHITE} Database Setup"
+    echo -e "${GREEN}  1)${WHITE} Panel + Wings Installation"
+    echo -e "${GREEN}  2)${WHITE} Blueprint + Theme + Extensions"
+    echo -e "${GREEN}  3)${WHITE} Cloudflare Setup"
+    echo -e "${GREEN}  4)${WHITE} System Information"
+    echo -e "${GREEN}  5)${WHITE} Tailscale (install + up)"
+    echo -e "${GREEN}  6)${WHITE} Database Setup"
     echo -e "${RED}  0)${WHITE} Exit"
     line
 }
@@ -51,6 +52,7 @@ run_script() {
     local file="$1"
     local url="${BASE}/${file}"
     local tmp
+    local status=0
 
     echo
     echo -e "${CYAN}[*] Loading ${file}...${RESET}"
@@ -58,17 +60,16 @@ run_script() {
     if ! command -v curl >/dev/null 2>&1; then
         echo -e "${RED}[!] curl is not installed.${RESET}"
         read -rp "Press Enter to return..."
-        return
+        return 1
     fi
 
-    tmp="$(mktemp)" || return
+    tmp="$(mktemp)" || return 1
 
-    if curl -fsSL "$url" -o "$tmp"; then
-        bash "$tmp"
-        local status=$?
+    if curl -fsSL --connect-timeout 15 "$url" -o "$tmp" && [[ -s "$tmp" ]]; then
+        bash "$tmp" || status=$?
         rm -f "$tmp"
 
-        if [ "$status" -eq 0 ]; then
+        if [[ "$status" -eq 0 ]]; then
             echo -e "${GREEN}[✓] Script completed.${RESET}"
         else
             echo -e "${RED}[!] Script exited with code ${status}.${RESET}"
@@ -85,22 +86,22 @@ run_script() {
 
 while true; do
     menu
-    read -rp "$(echo -e "${YELLOW}📝 Select an option [0-7]: ${RESET}")" choice
+
+    read -rp "$(echo -e "${YELLOW}📝 Select an option [0-6]: ${RESET}")" choice
 
     case "$choice" in
         1) run_script "panel.sh" ;;
-        2) run_script "wings.sh" ;;
-        3) run_script "blueprint.sh" ;;
-        4) run_script "cloudflare.sh" ;;
-        5) run_script "system-info.sh" ;;
-        6) run_script "tailscale.sh" ;;
-        7) run_script "database.sh" ;;
+        2) run_script "blueprint.sh" ;;
+        3) run_script "cloudflare.sh" ;;
+        4) run_script "system-info.sh" ;;
+        5) run_script "tailscale.sh" ;;
+        6) run_script "database.sh" ;;
         0)
             echo -e "${GREEN}Thanks for using PRITAM HOSTING MANAGER!${RESET}"
             exit 0
             ;;
         *)
-            echo -e "${RED}[!] Invalid option! Choose 0-7.${RESET}"
+            echo -e "${RED}[!] Invalid option! Choose 0-6.${RESET}"
             sleep 1
             ;;
     esac
