@@ -2,8 +2,8 @@
 #!/usr/bin/env bash
 
 # ==========================================================
-#          JISHNU HOSTING MANAGER
-#             made by nobita , jishnu
+#          PRITAM HOSTING MANAGER
+#             made by pritam 
 # ==========================================================
 
 PURPLE='\033[1;35m'
