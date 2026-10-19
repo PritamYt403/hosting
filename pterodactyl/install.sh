@@ -37,7 +37,7 @@ EOF
     echo -e "${RESET}"
     line
     echo -e "${GREEN}  1)${WHITE} Panel Installation"
-    echo -e "${GREEN}  2)${WHITE} Blueprint Installation"
+    echo -e "${GREEN}  2)${WHITE} Wings Installation"
     echo -e "${GREEN}  3)${WHITE} Blueprint + Theme + Extensions"
     echo -e "${GREEN}  4)${WHITE} Cloudflare Setup"
     echo -e "${GREEN}  5)${WHITE} System Information"
@@ -88,8 +88,8 @@ while true; do
     read -rp "$(echo -e "${YELLOW}📝 Select an option [0-7]: ${RESET}")" choice
 
     case "$choice" in
-        1) run_script "pterodactary.sh" ;;
-        2) run_script "blueprint-install.sh" ;;
+        1) run_script "panel.sh" ;;
+        2) run_script "wings.sh" ;;
         3) run_script "blueprint.sh" ;;
         4) run_script "cloudflare.sh" ;;
         5) run_script "system-info.sh" ;;
